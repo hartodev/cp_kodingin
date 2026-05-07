@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Database\Seeders\SettingSeeder;
+use Database\Seeders\UserSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -12,11 +14,24 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        $this->call([
+            // ── Urutan penting! Ikuti dependensi FK ───────────────
+            UserSeeder::class,
+            SettingSeeder::class,
+            SocialLinkSeeder::class,
+            BannerSeeder::class,
+            CourseCategorySeeder::class,
+            CourseLevelSeeder::class,
+            CourseSeeder::class,
+            TagSeeder::class,
+            PortfolioSeeder::class,
+            BlogCategorySeeder::class,
+            BlogSeeder::class,
+            TestimonialSeeder::class,
+            FaqSeeder::class,
+            OrderSeeder::class,       // buat order + youtube verification + enrollment
+            ReviewSeeder::class,
+            LessonProgressSeeder::class,
+        ]);
     }
 }

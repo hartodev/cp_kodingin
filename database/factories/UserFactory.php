@@ -23,22 +23,50 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
-        return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+          return [
+            'name'                 => fake()->name(),
+            'email'                => fake()->unique()->safeEmail(),
+            'password'             => Hash::make('password'),
+            'image'                => '/default-files/avatar.png',
+            'headline'             => fake()->jobTitle(),
+            'bio'                  => fake()->paragraph(),
+            'gender'               => fake()->randomElement(['male', 'female']),
+            'github'               => 'https://github.com/' . fake()->userName(),
+            'linkedin'             => 'https://linkedin.com/in/' . fake()->userName(),
+            'instagram'            => 'https://instagram.com/' . fake()->userName(),
+            'facebook'             => null,
+            'x'                    => null,
+            'website'              => fake()->url(),
+            'youtube_channel_id'   => null,
+            'is_youtube_verified'  => fake()->boolean(70), // 70% sudah verified
+            'email_verified_at'    => now(),
+            'remember_token'       => Str::random(10),
         ];
     }
-
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
+ 
+    // ── State: belum verifikasi email ──────────────────────────────
     public function unverified(): static
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+ 
+    // ── State: sudah subscribe YouTube ────────────────────────────
+    public function youtubeVerified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_youtube_verified' => true,
+            'youtube_channel_id'  => 'UC' . Str::random(22),
+        ]);
+    }
+ 
+    // ── State: belum subscribe YouTube ────────────────────────────
+    public function youtubeUnverified(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_youtube_verified' => false,
+            'youtube_channel_id'  => null,
         ]);
     }
 }
