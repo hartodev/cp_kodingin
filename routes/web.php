@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
+
 // ============================================================
 // FRONTEND — PUBLIC (tidak perlu login)
 // ============================================================
@@ -27,10 +28,10 @@ Route::post('/contact', [\App\Http\Controllers\Frontend\ContactController::class
 Route::post('/newsletter/subscribe', [\App\Http\Controllers\Frontend\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
  
 // ============================================================
-// AUTH — GUEST ONLY (sudah login tidak bisa akses)
+// FRONTEND AUTH — USER (guest only)
 // ============================================================
  
-Route::middleware('guest')->group(function () {
+Route::middleware('guest')->prefix('auth')->name('auth.')->group(function () {
     Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'index'])->name('login');
     Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'store'])->name('login.store');
  
@@ -45,7 +46,7 @@ Route::middleware('guest')->group(function () {
 });
  
 // ============================================================
-// USER — AUTH (harus login, role: user)
+// FRONTEND — USER DASHBOARD (harus login, role: user)
 // ============================================================
  
 Route::middleware(['auth', 'role:user'])
@@ -91,7 +92,7 @@ Route::middleware(['auth', 'role:user'])
         // Sertifikat
         Route::get('/certificates', [\App\Http\Controllers\User\CertificateController::class, 'index'])->name('certificates');
  
-        // ── Halaman Belajar (harus enroll) ────────────────────────
+        // Halaman Belajar (harus enroll)
         Route::middleware('enrolled')->group(function () {
             Route::get('/learn/{course}', [\App\Http\Controllers\User\LearnController::class, 'index'])->name('learn');
             Route::get('/learn/{course}/{lesson}', [\App\Http\Controllers\User\LearnController::class, 'show'])->name('learn.show');
@@ -118,13 +119,27 @@ Route::middleware(['auth', 'role:user'])
     });
  
 // ============================================================
-// ADMIN — AUTH (harus login, role: admin)
+// BACKEND ADMIN — prefix /admin (terpisah dari frontend)
 // ============================================================
  
-Route::middleware(['auth', 'role:admin'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
+Route::prefix('admin')->name('admin.')->group(function () {
+ 
+    // ── Admin Auth (guest admin) ───────────────────────────────────
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'index'])->name('login');
+        Route::post('/login', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'store'])->name('login.store');
+ 
+        Route::get('/forgot-password', [\App\Http\Controllers\Admin\Auth\ForgotPasswordController::class, 'index'])->name('password.request');
+        Route::post('/forgot-password', [\App\Http\Controllers\Admin\Auth\ForgotPasswordController::class, 'store'])->name('password.email');
+ 
+        Route::get('/reset-password/{token}', [\App\Http\Controllers\Admin\Auth\ResetPasswordController::class, 'index'])->name('password.reset');
+        Route::post('/reset-password', [\App\Http\Controllers\Admin\Auth\ResetPasswordController::class, 'store'])->name('password.update');
+    });
+ 
+    // ── Admin Panel (sudah login, role: admin) ─────────────────────
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+ 
+        Route::post('/logout', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'destroy'])->name('logout');
  
         // Dashboard
         Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
@@ -133,12 +148,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class);
         Route::resource('courses.chapters', \App\Http\Controllers\Admin\CourseChapterController::class);
         Route::resource('courses.chapters.lessons', \App\Http\Controllers\Admin\CourseLessonController::class);
- 
-        // Reorder chapter & lesson (drag-drop)
         Route::post('courses/{course}/chapters/reorder', [\App\Http\Controllers\Admin\CourseChapterController::class, 'reorder'])->name('courses.chapters.reorder');
         Route::post('courses/{course}/chapters/{chapter}/lessons/reorder', [\App\Http\Controllers\Admin\CourseLessonController::class, 'reorder'])->name('courses.chapters.lessons.reorder');
  
-        // Kategori & Level & Tag
+        // Kategori, Level, Tag
         Route::resource('categories', \App\Http\Controllers\Admin\CourseCategoryController::class);
         Route::resource('levels', \App\Http\Controllers\Admin\CourseLevelController::class);
         Route::resource('tags', \App\Http\Controllers\Admin\TagController::class);
@@ -177,7 +190,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class);
         Route::resource('social-links', \App\Http\Controllers\Admin\SocialLinkController::class);
  
-        // ── Pesan Masuk (Contact) ──────────────────────────────────
+        // ── Pesan Masuk ────────────────────────────────────────────
         Route::get('contacts', [\App\Http\Controllers\Admin\ContactController::class, 'index'])->name('contacts.index');
         Route::get('contacts/{contact}', [\App\Http\Controllers\Admin\ContactController::class, 'show'])->name('contacts.show');
         Route::patch('contacts/{contact}/read', [\App\Http\Controllers\Admin\ContactController::class, 'markRead'])->name('contacts.read');
@@ -195,3 +208,5 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
     });
+});
+ 
