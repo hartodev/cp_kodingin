@@ -13,11 +13,12 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-       // ── Owner / Admin utama ────────────────────────────────────
+           // ── Owner / Admin utama ────────────────────────────────────
         User::create([
             'name'                => 'Admin PanduanFlow',
             'email'               => 'admin@panduanflow.com',
             'password'            => Hash::make('password'),
+            'role'                => 'admin',           // ← tambah ini
             'image'               => '/default-files/avatar.png',
             'headline'            => 'Founder & Educator at PanduanFlow',
             'bio'                 => 'Seorang developer dan educator yang passionate di bidang teknologi. Sudah 5 tahun mengajar dan membantu ribuan developer berkembang.',

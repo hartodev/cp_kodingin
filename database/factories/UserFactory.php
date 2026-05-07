@@ -22,25 +22,25 @@ class UserFactory extends Factory
      * @return array<string, mixed>
      */
     public function definition(): array
-    {
-          return [
-            'name'                 => fake()->name(),
-            'email'                => fake()->unique()->safeEmail(),
-            'password'             => Hash::make('password'),
-            'image'                => '/default-files/avatar.png',
-            'headline'             => fake()->jobTitle(),
-            'bio'                  => fake()->paragraph(),
-            'gender'               => fake()->randomElement(['male', 'female']),
-            'github'               => 'https://github.com/' . fake()->userName(),
-            'linkedin'             => 'https://linkedin.com/in/' . fake()->userName(),
-            'instagram'            => 'https://instagram.com/' . fake()->userName(),
-            'facebook'             => null,
-            'x'                    => null,
-            'website'              => fake()->url(),
-            'youtube_channel_id'   => null,
-            'is_youtube_verified'  => fake()->boolean(70), // 70% sudah verified
-            'email_verified_at'    => now(),
-            'remember_token'       => Str::random(10),
+    {  return [
+            'name'                => fake()->name(),
+            'email'               => fake()->unique()->safeEmail(),
+            'password'            => Hash::make('password'),
+            'role'                => 'user',            // ← tambah ini
+            'image'               => '/default-files/avatar.png',
+            'headline'            => fake()->jobTitle(),
+            'bio'                 => fake()->paragraph(),
+            'gender'              => fake()->randomElement(['male', 'female']),
+            'github'              => 'https://github.com/' . fake()->userName(),
+            'linkedin'            => 'https://linkedin.com/in/' . fake()->userName(),
+            'instagram'           => 'https://instagram.com/' . fake()->userName(),
+            'facebook'            => null,
+            'x'                   => null,
+            'website'             => fake()->url(),
+            'youtube_channel_id'  => null,
+            'is_youtube_verified' => fake()->boolean(70),
+            'email_verified_at'   => now(),
+            'remember_token'      => Str::random(10),
         ];
     }
  

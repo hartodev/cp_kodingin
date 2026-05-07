@@ -13,7 +13,6 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
-  
     protected $guarded = ['id'];
  
     protected $hidden = [
@@ -28,6 +27,22 @@ class User extends Authenticatable
             'is_youtube_verified' => 'boolean',
             'password'            => 'hashed',
         ];
+    }
+ 
+    // ── Helper role ────────────────────────────────────────────────
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+ 
+    public function isUser(): bool
+    {
+        return $this->role === 'user';
+    }
+ 
+    public function hasRole(string $role): bool
+    {
+        return $this->role === $role;
     }
  
     // ── Courses yang dibuat owner ──────────────────────────────────
