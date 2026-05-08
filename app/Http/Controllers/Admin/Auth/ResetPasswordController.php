@@ -12,13 +12,13 @@ use Illuminate\Auth\Events\PasswordReset;
 
 class ResetPasswordController extends Controller
 {
-    // ── Form reset password ────────────────────────────────────────
+    // ── Form reset password ─────────────────────────────
     public function index(string $token)
     {
         return view('admin.auth.reset-password', ['token' => $token]);
     }
 
-    // ── Proses reset password ──────────────────────────────────────
+    // ── Proses reset password ────────────────────────────
     public function store(Request $request)
     {
         $request->validate([

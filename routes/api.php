@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Route;
  
 Route::prefix('v1')->name('api.')->group(function () {
  
-    // ============================================================
+    // ==============================================
     // PUBLIC — tidak perlu login
-    // ============================================================
+    // ==============================================
  
     // Auth
     Route::post('/auth/register', [\App\Http\Controllers\Api\Auth\RegisterController::class, 'store'])->name('auth.register');
