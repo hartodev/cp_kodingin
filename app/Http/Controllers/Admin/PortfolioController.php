@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/PortfolioController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Portfolio;
 use Illuminate\Http\Request;
 
 class PortfolioController extends Controller
 {
-     public function index()
+    public function index()
     {
         $portfolios = Portfolio::orderBy('order')->get();
 
@@ -46,6 +48,7 @@ class PortfolioController extends Controller
             ->with('success', 'Portfolio berhasil ditambahkan.');
     }
 
+    // Route: portfolios/{portfolio}
     public function edit(Portfolio $portfolio)
     {
         return view('admin.portfolios.edit', compact('portfolio'));
@@ -83,7 +86,6 @@ class PortfolioController extends Controller
             ->with('success', 'Portfolio berhasil dihapus.');
     }
 
-    // ── Reorder portfolio ──────────────────────────────────────────
     public function reorder(Request $request)
     {
         $request->validate(['orders' => 'required|array']);

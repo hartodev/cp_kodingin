@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/TagController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class TagController extends Controller
 {
-
     public function index()
     {
         $tags = Tag::withCount('courses')->latest()->paginate(20);
@@ -30,6 +32,7 @@ class TagController extends Controller
         return back()->with('success', 'Tag berhasil ditambahkan.');
     }
 
+    // Route: tags/{tag}
     public function update(Request $request, Tag $tag)
     {
         $request->validate([

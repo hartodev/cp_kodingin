@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/DashboardController
+
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Course;
@@ -25,30 +27,17 @@ class DashboardController extends Controller
             'total_reviews'     => Review::where('status', true)->count(),
         ];
 
-        // Order terbaru
         $latestOrders = Order::with(['user', 'items.course'])
-            ->latest()
-            ->limit(5)
-            ->get();
+            ->latest()->limit(5)->get();
 
-        // Verifikasi YouTube menunggu
         $pendingVerifications = YoutubeVerification::with(['user', 'order'])
-            ->where('status', 'pending')
-            ->latest()
-            ->limit(5)
-            ->get();
+            ->where('status', 'pending')->latest()->limit(5)->get();
 
-        // Kursus terpopuler
         $popularCourses = Course::withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
-            ->orderByDesc('enrollments_count')
-            ->limit(5)
-            ->get();
+            ->orderByDesc('enrollments_count')->limit(5)->get();
 
-        // User terbaru
         $latestUsers = User::where('role', 'user')
-            ->latest()
-            ->limit(5)
-            ->get();
+            ->latest()->limit(5)->get();
 
         return view('admin.dashboard', compact(
             'stats',

@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/BlogController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
 use App\Models\BlogCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class BlogController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $blogs = Blog::with(['category', 'user'])
             ->withCount('comments')
             ->when($request->search, fn($q) => $q->where('title', 'like', "%{$request->search}%"))
             ->when($request->category, fn($q) => $q->where('blog_category_id', $request->category))
-            ->when(isset($request->status), fn($q) => $q->where('status', $request->status))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -43,8 +46,8 @@ class BlogController extends Controller
             'status'           => 'boolean',
         ]);
 
-        $data          = $request->except(['image', '_token']);
-        $data['slug']  = Str::slug($request->title);
+        $data            = $request->except(['image', '_token']);
+        $data['slug']    = Str::slug($request->title);
         $data['user_id'] = auth()->id();
 
         if ($request->hasFile('image')) {
@@ -57,6 +60,7 @@ class BlogController extends Controller
             ->with('success', 'Blog berhasil dipublikasikan.');
     }
 
+    // Route: blogs/{blog}
     public function show(Blog $blog)
     {
         $blog->load(['category', 'comments.user']);

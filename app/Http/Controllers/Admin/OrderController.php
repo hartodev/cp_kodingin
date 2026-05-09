@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/OrderController
+
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-      public function index(Request $request)
+    public function index(Request $request)
     {
         $orders = Order::with(['user', 'items.course'])
             ->when($request->status, fn($q) => $q->where('status', $request->status))
@@ -23,6 +25,7 @@ class OrderController extends Controller
         return view('admin.orders.index', compact('orders'));
     }
 
+    // Route: orders/{order}
     public function show(Order $order)
     {
         $order->load(['user', 'items.course', 'youtubeVerification.verifiedBy']);

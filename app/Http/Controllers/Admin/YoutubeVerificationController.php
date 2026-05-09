@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/YoutubeVerificationController
+
 use App\Http\Controllers\Controller;
 use App\Models\YoutubeVerification;
 use Illuminate\Http\Request;
 
 class YoutubeVerificationController extends Controller
 {
-
     public function index(Request $request)
     {
         $verifications = YoutubeVerification::with(['user', 'order.items.course'])
@@ -26,6 +27,7 @@ class YoutubeVerificationController extends Controller
         return view('admin.verifications.index', compact('verifications', 'pendingCount'));
     }
 
+    // Route: verifications/{verification}
     public function show(YoutubeVerification $verification)
     {
         $verification->load(['user', 'order.items.course', 'verifiedBy']);
@@ -33,13 +35,14 @@ class YoutubeVerificationController extends Controller
         return view('admin.verifications.show', compact('verification'));
     }
 
-    // ── Approve verifikasi → buka akses kursus otomatis ───────────
+    // Route: verifications/{verification}/approve
     public function approve(Request $request, YoutubeVerification $verification)
     {
         $request->validate([
             'admin_note' => 'nullable|string|max:500',
         ]);
 
+        // Simpan status sebelum proses
         if ($verification->status !== 'pending') {
             return back()->with('error', 'Verifikasi ini sudah diproses sebelumnya.');
         }
@@ -49,7 +52,7 @@ class YoutubeVerificationController extends Controller
         return back()->with('success', 'Verifikasi disetujui. Akses kursus sudah dibuka untuk user.');
     }
 
-    // ── Reject verifikasi ──────────────────────────────────────────
+    // Route: verifications/{verification}/reject
     public function reject(Request $request, YoutubeVerification $verification)
     {
         $request->validate([

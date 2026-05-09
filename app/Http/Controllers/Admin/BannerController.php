@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/BannerController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
 use Illuminate\Http\Request;
@@ -44,6 +46,7 @@ class BannerController extends Controller
             ->with('success', 'Banner berhasil ditambahkan.');
     }
 
+    // Route: banners/{banner}
     public function edit(Banner $banner)
     {
         return view('admin.banners.edit', compact('banner'));

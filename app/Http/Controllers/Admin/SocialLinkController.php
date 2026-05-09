@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/SocialLinkController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\SocialLink;
 use Illuminate\Http\Request;
 
 class SocialLinkController extends Controller
 {
-   public function index()
+    public function index()
     {
         $socialLinks = SocialLink::orderBy('order')->get();
 
@@ -41,6 +43,7 @@ class SocialLinkController extends Controller
             ->with('success', 'Social link berhasil ditambahkan.');
     }
 
+    // Route: social-links/{social_link}
     public function edit(SocialLink $socialLink)
     {
         return view('admin.social-links.edit', compact('socialLink'));

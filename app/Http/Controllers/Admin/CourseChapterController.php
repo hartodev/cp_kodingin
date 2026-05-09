@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/CourseChapterController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseChapter;
@@ -9,6 +11,7 @@ use Illuminate\Http\Request;
 
 class CourseChapterController extends Controller
 {
+    // Route: courses/{course}/chapters
     public function index(Course $course)
     {
         $course->load('chapters.lessons');
@@ -40,6 +43,7 @@ class CourseChapterController extends Controller
             ->with('success', 'Chapter berhasil ditambahkan.');
     }
 
+    // Route: courses/{course}/chapters/{chapter}
     public function edit(Course $course, CourseChapter $chapter)
     {
         return view('admin.courses.chapters.edit', compact('course', 'chapter'));
@@ -69,7 +73,6 @@ class CourseChapterController extends Controller
             ->with('success', 'Chapter berhasil dihapus.');
     }
 
-    // ── Reorder chapters (drag-drop) ───────────────────────────────
     public function reorder(Request $request, Course $course)
     {
         $request->validate(['orders' => 'required|array']);

@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/EnrollmentController
+
 use App\Http\Controllers\Controller;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
 
 class EnrollmentController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $enrollments = Enrollment::with(['user', 'course'])
             ->when($request->search, fn($q) => $q->whereHas('user', fn($q) =>
@@ -24,6 +26,7 @@ class EnrollmentController extends Controller
         return view('admin.enrollments.index', compact('enrollments'));
     }
 
+    // Route: enrollments/{enrollment}
     public function show(Enrollment $enrollment)
     {
         $enrollment->load(['user', 'course', 'order']);
@@ -39,13 +42,15 @@ class EnrollmentController extends Controller
             ->with('success', 'Enrollment berhasil dihapus.');
     }
 
-    // ── Toggle akses kursus user ───────────────────────────────────
+    // Route: enrollments/{enrollment}/toggle-access
     public function toggleAccess(Enrollment $enrollment)
     {
-        $enrollment->update(['have_access' => ! $enrollment->have_access]);
+        $newAccess = ! $enrollment->have_access;
 
-        $status = $enrollment->have_access ? 'dibuka' : 'dicabut';
+        $enrollment->update(['have_access' => $newAccess]);
 
-        return back()->with('success', "Akses kursus berhasil {$status}.");
+        $label = $newAccess ? 'dibuka' : 'dicabut';
+
+        return back()->with('success', "Akses kursus berhasil {$label}.");
     }
 }
