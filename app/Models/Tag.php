@@ -10,9 +10,9 @@ class Tag extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     // ── Kursus dengan tag ini (many-to-many) ──────────────────────
     public function courses(): BelongsToMany
     {

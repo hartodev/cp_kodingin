@@ -9,16 +9,16 @@ class Contact extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'is_read' => 'boolean',
         ];
     }
- 
+
     public function scopeUnread($query)
     {
         return $query->where('is_read', false);

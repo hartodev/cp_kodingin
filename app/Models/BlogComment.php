@@ -10,28 +10,28 @@ class BlogComment extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'status' => 'boolean',
         ];
     }
- 
+
     // ── Relasi ke user ────────────────────────────────────────────
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
- 
+
     // ── Relasi ke blog ────────────────────────────────────────────
     public function blog(): BelongsTo
     {
         return $this->belongsTo(Blog::class);
     }
- 
+
     // ── Scope: hanya yang aktif ───────────────────────────────────
     public function scopeActive($query)
     {

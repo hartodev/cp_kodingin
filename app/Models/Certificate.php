@@ -10,27 +10,27 @@ class Certificate extends Model
 {
     use HasFactory;
 
-    protected $guarded = ['id'];
- 
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'issued_at' => 'datetime',
         ];
     }
- 
+
     // ── Relasi ke user ────────────────────────────────────────────
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
- 
+
     // ── Relasi ke kursus ──────────────────────────────────────────
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
- 
+
     // ── Helper: generate nomor sertifikat ─────────────────────────
     public static function generateNumber(): string
     {

@@ -10,22 +10,22 @@ class BlogCategory extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'status' => 'boolean',
         ];
     }
- 
+
     // ── Blog dalam kategori ini ───────────────────────────────────
     public function blogs(): HasMany
     {
         return $this->hasMany(Blog::class);
     }
- 
+
     // ── Scope: hanya yang aktif ───────────────────────────────────
     public function scopeActive($query)
     {

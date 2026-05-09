@@ -11,34 +11,34 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Blog extends Model
 {
    use HasFactory, SoftDeletes;
- 
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'status' => 'boolean',
         ];
     }
- 
+
     // ── Relasi ke user (penulis) ──────────────────────────────────
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
- 
+
     // ── Relasi ke kategori ────────────────────────────────────────
     public function category(): BelongsTo
     {
         return $this->belongsTo(BlogCategory::class, 'blog_category_id');
     }
- 
+
     // ── Komentar blog ─────────────────────────────────────────────
     public function comments(): HasMany
     {
         return $this->hasMany(BlogComment::class)->where('status', true);
     }
- 
+
     // ── Scope: hanya yang aktif ───────────────────────────────────
     public function scopeActive($query)
     {

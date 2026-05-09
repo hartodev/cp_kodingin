@@ -8,11 +8,11 @@ use Illuminate\Http\Request;
 
 class BlogCommentController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $comments = BlogComment::with(['user', 'blog'])
             ->when($request->search, fn($q) => $q->where('comment', 'like', "%{$request->search}%"))
-            ->when(isset($request->status), fn($q) => $q->where('status', $request->status))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status)) // ← fix: pakai has() bukan isset()
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -30,10 +30,14 @@ class BlogCommentController extends Controller
     // ── Toggle status komentar ─────────────────────────────────────
     public function toggle(BlogComment $blogComment)
     {
-        $blogComment->update(['status' => ! $blogComment->status]);
+        // ── Fix: simpan nilai BARU dulu sebelum update ─────────────
+        $newStatus = ! $blogComment->status;
 
-        $status = $blogComment->status ? 'ditampilkan' : 'disembunyikan';
+        $blogComment->update(['status' => $newStatus]);
 
-        return back()->with('success', "Komentar berhasil {$status}.");
+        // ← pakai $newStatus, bukan $blogComment->status (sudah berubah setelah update)
+        $label = $newStatus ? 'ditampilkan' : 'disembunyikan';
+
+        return back()->with('success', "Komentar berhasil {$label}.");
     }
 }

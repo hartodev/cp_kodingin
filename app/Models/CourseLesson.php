@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CourseLesson extends Model
 {
     use HasFactory;
-     protected $guarded = ['id'];
- 
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
@@ -20,37 +20,37 @@ class CourseLesson extends Model
             'status'       => 'boolean',
         ];
     }
- 
+
     // ── Relasi ke kursus ──────────────────────────────────────────
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
- 
+
     // ── Relasi ke chapter ─────────────────────────────────────────
     public function chapter(): BelongsTo
     {
         return $this->belongsTo(CourseChapter::class);
     }
- 
+
     // ── Progress user di lesson ini ───────────────────────────────
     public function progress(): HasMany
     {
         return $this->hasMany(LessonProgress::class, 'lesson_id');
     }
- 
+
     // ── Thread diskusi di lesson ini ──────────────────────────────
     public function discussionThreads(): HasMany
     {
         return $this->hasMany(DiscussionThread::class, 'lesson_id');
     }
- 
+
     // ── Scope: hanya yang aktif ───────────────────────────────────
     public function scopeActive($query)
     {
         return $query->where('status', true);
     }
- 
+
     // ── Helper: cek apakah user sudah selesaikan lesson ini ───────
     public function isCompletedBy(int $userId): bool
     {

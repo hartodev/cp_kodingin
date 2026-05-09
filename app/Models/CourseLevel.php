@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CourseLevel extends Model
 {
     use HasFactory;
-    protected $guarded = ['id'];
- 
+    protected $guarded = [];
+
     // ── Kursus dengan level ini ────────────────────────────────────
     public function courses(): HasMany
     {

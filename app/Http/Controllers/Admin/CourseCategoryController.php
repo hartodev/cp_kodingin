@@ -50,7 +50,7 @@ class CourseCategoryController extends Controller
     public function update(Request $request, CourseCategory $category)
     {
         $request->validate([
-            'name'   => 'required|string|max:100|unique:course_categories,name,' . $category->id,
+            'name'   => 'required|string|max:100|unique:course_categories,name,' . $category->id, // ← $category->id sudah benar, masalahnya cuma missing use Str
             'icon'   => 'nullable|string|max:100',
             'image'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
             'status' => 'boolean',

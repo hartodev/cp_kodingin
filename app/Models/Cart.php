@@ -10,14 +10,14 @@ class Cart extends Model
 {
     use HasFactory;
 
-     protected $guarded = ['id'];
- 
+    protected $guarded = [];
+
     // ── Relasi ke user ────────────────────────────────────────────
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
- 
+
     // ── Relasi ke kursus ──────────────────────────────────────────
     public function course(): BelongsTo
     {

@@ -9,16 +9,16 @@ class SocialLink extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'status' => 'boolean',
         ];
     }
- 
+
     public function scopeActive($query)
     {
         return $query->where('status', true)->orderBy('order');

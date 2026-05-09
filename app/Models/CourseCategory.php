@@ -10,22 +10,22 @@ class CourseCategory extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'status' => 'boolean',
         ];
     }
- 
+
     // ── Kursus dalam kategori ini ──────────────────────────────────
     public function courses(): HasMany
     {
         return $this->hasMany(Course::class, 'category_id');
     }
- 
+
     // ── Scope: hanya yang aktif ────────────────────────────────────
     public function scopeActive($query)
     {

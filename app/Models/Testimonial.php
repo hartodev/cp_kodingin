@@ -9,9 +9,9 @@ class Testimonial extends Model
 {
     use HasFactory;
 
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
@@ -19,7 +19,7 @@ class Testimonial extends Model
             'rating' => 'integer',
         ];
     }
- 
+
     public function scopeActive($query)
     {
         return $query->where('status', true)->orderBy('order');

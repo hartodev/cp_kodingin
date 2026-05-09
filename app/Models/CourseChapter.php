@@ -10,28 +10,28 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class CourseChapter extends Model
 {
     use HasFactory;
-    
-    protected $guarded = ['id'];
- 
+
+    protected $guarded = [];
+
     protected function casts(): array
     {
         return [
             'status' => 'boolean',
         ];
     }
- 
+
     // ── Relasi ke kursus ──────────────────────────────────────────
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
- 
+
     // ── Lessons dalam bab ini ─────────────────────────────────────
     public function lessons(): HasMany
     {
         return $this->hasMany(CourseLesson::class, 'chapter_id')->orderBy('order');
     }
- 
+
     // ── Scope: hanya yang aktif ───────────────────────────────────
     public function scopeActive($query)
     {

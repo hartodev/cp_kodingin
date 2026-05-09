@@ -8,13 +8,13 @@ use Illuminate\Http\Request;
 
 class ContactController extends Controller
 {
-      public function index(Request $request)
+    public function index(Request $request)
     {
         $contacts = Contact::when($request->search, fn($q) =>
                 $q->where('name', 'like', "%{$request->search}%")
                   ->orWhere('email', 'like', "%{$request->search}%")
                   ->orWhere('subject', 'like', "%{$request->search}%"))
-            ->when(isset($request->is_read), fn($q) => $q->where('is_read', $request->is_read))
+            ->when($request->has('is_read'), fn($q) => $q->where('is_read', $request->is_read)) // ← fix: pakai has()
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -26,8 +26,10 @@ class ContactController extends Controller
 
     public function show(Contact $contact)
     {
-        // Auto mark as read saat dibuka
-        if (! $contact->is_read) {
+        // ── Fix: cek sebelum update, bukan dari properti model ─────
+        $wasUnread = ! $contact->is_read;
+
+        if ($wasUnread) {
             $contact->update(['is_read' => true]);
         }
 
