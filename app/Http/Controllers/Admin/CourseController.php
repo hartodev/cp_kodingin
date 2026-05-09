@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/CourseController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseCategory;
 use App\Models\CourseLevel;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
-      public function index(Request $request)
+    public function index(Request $request)
     {
         $courses = Course::with(['category', 'level'])
             ->withCount(['enrollments' => fn($q) => $q->where('have_access', true), 'reviews'])
@@ -39,25 +42,25 @@ class CourseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title'              => 'required|string|max:255',
-            'category_id'        => 'nullable|exists:course_categories,id',
-            'course_level_id'    => 'nullable|exists:course_levels,id',
-            'description'        => 'nullable|string',
-            'seo_description'    => 'nullable|string|max:255',
-            'thumbnail'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'demo_video_storage' => 'nullable|in:upload,youtube,vimeo,external_link',
-            'demo_video_source'  => 'nullable|string',
-            'duration'           => 'nullable|string|max:100',
-            'certificate'        => 'boolean',
-            'qna'                => 'boolean',
+            'title'                     => 'required|string|max:255',
+            'category_id'               => 'nullable|exists:course_categories,id',
+            'course_level_id'           => 'nullable|exists:course_levels,id',
+            'description'               => 'nullable|string',
+            'seo_description'           => 'nullable|string|max:255',
+            'thumbnail'                 => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'demo_video_storage'        => 'nullable|in:upload,youtube,vimeo,external_link',
+            'demo_video_source'         => 'nullable|string',
+            'duration'                  => 'nullable|string|max:100',
+            'certificate'               => 'boolean',
+            'qna'                       => 'boolean',
             'require_youtube_subscribe' => 'boolean',
-            'status'             => 'required|in:draft,active,inactive',
-            'tags'               => 'nullable|array',
-            'tags.*'             => 'exists:tags,id',
+            'status'                    => 'required|in:draft,active,inactive',
+            'tags'                      => 'nullable|array',
+            'tags.*'                    => 'exists:tags,id',
         ]);
 
-        $data          = $request->except(['thumbnail', 'tags', '_token']);
-        $data['slug']  = Str::slug($request->title) . '-' . Str::random(5);
+        $data            = $request->except(['thumbnail', 'tags', '_token']);
+        $data['slug']    = Str::slug($request->title) . '-' . Str::random(5);
         $data['user_id'] = auth()->id();
 
         if ($request->hasFile('thumbnail')) {
@@ -94,21 +97,21 @@ class CourseController extends Controller
     public function update(Request $request, Course $course)
     {
         $request->validate([
-            'title'              => 'required|string|max:255',
-            'category_id'        => 'nullable|exists:course_categories,id',
-            'course_level_id'    => 'nullable|exists:course_levels,id',
-            'description'        => 'nullable|string',
-            'seo_description'    => 'nullable|string|max:255',
-            'thumbnail'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'demo_video_storage' => 'nullable|in:upload,youtube,vimeo,external_link',
-            'demo_video_source'  => 'nullable|string',
-            'duration'           => 'nullable|string|max:100',
-            'certificate'        => 'boolean',
-            'qna'                => 'boolean',
+            'title'                     => 'required|string|max:255',
+            'category_id'               => 'nullable|exists:course_categories,id',
+            'course_level_id'           => 'nullable|exists:course_levels,id',
+            'description'               => 'nullable|string',
+            'seo_description'           => 'nullable|string|max:255',
+            'thumbnail'                 => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'demo_video_storage'        => 'nullable|in:upload,youtube,vimeo,external_link',
+            'demo_video_source'         => 'nullable|string',
+            'duration'                  => 'nullable|string|max:100',
+            'certificate'               => 'boolean',
+            'qna'                       => 'boolean',
             'require_youtube_subscribe' => 'boolean',
-            'status'             => 'required|in:draft,active,inactive',
-            'tags'               => 'nullable|array',
-            'tags.*'             => 'exists:tags,id',
+            'status'                    => 'required|in:draft,active,inactive',
+            'tags'                      => 'nullable|array',
+            'tags.*'                    => 'exists:tags,id',
         ]);
 
         $data = $request->except(['thumbnail', 'tags', '_token', '_method']);

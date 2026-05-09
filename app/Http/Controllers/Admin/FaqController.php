@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/FaqController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use Illuminate\Http\Request;
@@ -39,6 +41,7 @@ class FaqController extends Controller
             ->with('success', 'FAQ berhasil ditambahkan.');
     }
 
+    // Route: faqs/{faq}
     public function edit(Faq $faq)
     {
         return view('admin.faqs.edit', compact('faq'));

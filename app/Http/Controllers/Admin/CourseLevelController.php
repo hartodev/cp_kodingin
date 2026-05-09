@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/CourseLevelController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\CourseLevel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CourseLevelController extends Controller
 {
-
     public function index()
     {
         $levels = CourseLevel::withCount('courses')->get();
@@ -36,6 +38,7 @@ class CourseLevelController extends Controller
             ->with('success', 'Level berhasil ditambahkan.');
     }
 
+    // Route: levels/{level}
     public function edit(CourseLevel $level)
     {
         return view('admin.levels.edit', compact('level'));

@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/CourseCategoryController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\CourseCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CourseCategoryController extends Controller
 {
-     public function index()
+    public function index()
     {
         $categories = CourseCategory::withCount('courses')->latest()->paginate(15);
 
@@ -42,6 +45,7 @@ class CourseCategoryController extends Controller
             ->with('success', 'Kategori berhasil ditambahkan.');
     }
 
+    // Route: categories/{category}
     public function edit(CourseCategory $category)
     {
         return view('admin.categories.edit', compact('category'));

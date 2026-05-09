@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/TestimonialController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Testimonial;
 use Illuminate\Http\Request;
 
 class TestimonialController extends Controller
 {
-     public function index()
+    public function index()
     {
         $testimonials = Testimonial::orderBy('order')->paginate(15);
 
@@ -44,6 +46,7 @@ class TestimonialController extends Controller
             ->with('success', 'Testimoni berhasil ditambahkan.');
     }
 
+    // Route: testimonials/{testimonial}
     public function edit(Testimonial $testimonial)
     {
         return view('admin.testimonials.edit', compact('testimonial'));

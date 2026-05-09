@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/CourseLessonController --resource
+
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseChapter;
 use App\Models\CourseLesson;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class CourseLessonController extends Controller
 {
+    // Route: courses/{course}/chapters/{chapter}/lessons
     public function create(Course $course, CourseChapter $chapter)
     {
         return view('admin.courses.lessons.create', compact('course', 'chapter'));
@@ -18,15 +22,15 @@ class CourseLessonController extends Controller
     public function store(Request $request, Course $course, CourseChapter $chapter)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'file_path'   => 'nullable|string',
-            'storage'     => 'required|in:upload,youtube,vimeo,external_link',
-            'file_type'   => 'required|in:video,audio,pdf,doc,file',
-            'duration'    => 'nullable|string|max:20',
-            'is_preview'  => 'boolean',
-            'downloadable'=> 'boolean',
-            'status'      => 'boolean',
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'file_path'    => 'nullable|string',
+            'storage'      => 'required|in:upload,youtube,vimeo,external_link',
+            'file_type'    => 'required|in:video,audio,pdf,doc,file',
+            'duration'     => 'nullable|string|max:20',
+            'is_preview'   => 'boolean',
+            'downloadable' => 'boolean',
+            'status'       => 'boolean',
         ]);
 
         $order = $chapter->lessons()->max('order') + 1;
@@ -52,6 +56,7 @@ class CourseLessonController extends Controller
             ->with('success', 'Lesson berhasil ditambahkan.');
     }
 
+    // Route: courses/{course}/chapters/{chapter}/lessons/{lesson}
     public function edit(Course $course, CourseChapter $chapter, CourseLesson $lesson)
     {
         return view('admin.courses.lessons.edit', compact('course', 'chapter', 'lesson'));
@@ -95,7 +100,6 @@ class CourseLessonController extends Controller
             ->with('success', 'Lesson berhasil dihapus.');
     }
 
-    // ── Reorder lessons (drag-drop) ────────────────────────────────
     public function reorder(Request $request, Course $course, CourseChapter $chapter)
     {
         $request->validate(['orders' => 'required|array']);

@@ -2,20 +2,22 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/ReviewController
+
 use App\Http\Controllers\Controller;
 use App\Models\Review;
 use Illuminate\Http\Request;
 
 class ReviewController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $reviews = Review::with(['user', 'course'])
             ->when($request->search, fn($q) => $q->whereHas('user', fn($q) =>
                 $q->where('name', 'like', "%{$request->search}%")
             ))
             ->when($request->rating, fn($q) => $q->where('rating', $request->rating))
-            ->when(isset($request->status), fn($q) => $q->where('status', $request->status))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -23,6 +25,7 @@ class ReviewController extends Controller
         return view('admin.reviews.index', compact('reviews'));
     }
 
+    // Route: reviews/{review}
     public function destroy(Review $review)
     {
         $review->delete();
@@ -30,13 +33,15 @@ class ReviewController extends Controller
         return back()->with('success', 'Review berhasil dihapus.');
     }
 
-    // ── Toggle status review (tampil/sembunyikan) ──────────────────
+    // Route: reviews/{review}/toggle
     public function toggle(Review $review)
     {
-        $review->update(['status' => ! $review->status]);
+        $newStatus = ! $review->status;
 
-        $status = $review->status ? 'ditampilkan' : 'disembunyikan';
+        $review->update(['status' => $newStatus]);
 
-        return back()->with('success', "Review berhasil {$status}.");
+        $label = $newStatus ? 'ditampilkan' : 'disembunyikan';
+
+        return back()->with('success', "Review berhasil {$label}.");
     }
 }

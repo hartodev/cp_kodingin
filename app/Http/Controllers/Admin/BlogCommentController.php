@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+// php artisan make:controller Admin/BlogCommentController
+
 use App\Http\Controllers\Controller;
 use App\Models\BlogComment;
 use Illuminate\Http\Request;
 
 class BlogCommentController extends Controller
 {
-     public function index(Request $request)
+    public function index(Request $request)
     {
         $comments = BlogComment::with(['user', 'blog'])
             ->when($request->search, fn($q) => $q->where('comment', 'like', "%{$request->search}%"))
-            ->when(isset($request->status), fn($q) => $q->where('status', $request->status))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -20,20 +22,23 @@ class BlogCommentController extends Controller
         return view('admin.blog-comments.index', compact('comments'));
     }
 
-    public function destroy(BlogComment $blogComment)
+    // Route: blog-comments/{comment} ← parameter harus $comment
+    public function destroy(BlogComment $comment)
     {
-        $blogComment->delete();
+        $comment->delete();
 
         return back()->with('success', 'Komentar berhasil dihapus.');
     }
 
-    // ── Toggle status komentar ─────────────────────────────────────
-    public function toggle(BlogComment $blogComment)
+    // Route: blog-comments/{comment}/toggle ← parameter harus $comment
+    public function toggle(BlogComment $comment)
     {
-        $blogComment->update(['status' => ! $blogComment->status]);
+        $newStatus = ! $comment->status;
 
-        $status = $blogComment->status ? 'ditampilkan' : 'disembunyikan';
+        $comment->update(['status' => $newStatus]);
 
-        return back()->with('success', "Komentar berhasil {$status}.");
+        $label = $newStatus ? 'ditampilkan' : 'disembunyikan';
+
+        return back()->with('success', "Komentar berhasil {$label}.");
     }
 }
