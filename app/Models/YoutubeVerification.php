@@ -16,6 +16,7 @@ class YoutubeVerification extends Model
     {
         return [
             'verified_at' => 'datetime',
+            'status'      => 'string',
         ];
     }
 

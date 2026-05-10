@@ -133,7 +133,9 @@
             @if($verification->verifiedBy)
             <div style="margin-top:0.8rem;font-size:0.8rem;color:var(--text-muted);">
                 Diproses oleh <strong>{{ $verification->verifiedBy->name }}</strong>
-                pada {{ $verification->verified_at?->format('d M Y H:i') }}
+                {{-- pada {{ $verification->verified_at?->format('d M Y H:i') }} --}}
+                pada {{ $verification->verified_at ? \Carbon\Carbon::parse($verification->verified_at)->format('d M Y H:i') : '-' }}
+
             </div>
             @endif
         </div>
