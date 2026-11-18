@@ -1,0 +1,1222 @@
+﻿
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2014_10_12_000000_create_users_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+             $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('role')->default('user');
+            // Profile
+            $table->string('image')->default('/default-files/avatar.png');
+            $table->string('headline')->nullable();
+            $table->text('bio')->nullable();
+            $table->enum('gender', ['male', 'female'])->nullable();
+ 
+            // Social links
+            $table->string('github')->nullable();
+            $table->string('linkedin')->nullable();
+            $table->string('instagram')->nullable();
+            $table->string('facebook')->nullable();
+            $table->string('x')->nullable();
+            $table->string('website')->nullable();
+ 
+            // YouTube â€” untuk verifikasi subscribe
+            $table->string('youtube_channel_id')->nullable();   // channel ID user (opsional)
+            $table->boolean('is_youtube_verified')->default(false)->index(); // sudah pernah verifikasi
+ 
+            $table->timestamp('email_verified_at')->nullable();
+            $table->rememberToken();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2014_10_12_100000_create_password_reset_tokens_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('password_reset_tokens');
+    }
+};
+
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2019_08_19_000000_create_failed_jobs_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('failed_jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('failed_jobs');
+    }
+};
+
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2019_12_14_000001_create_personal_access_tokens_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('personal_access_tokens', function (Blueprint $table) {
+            $table->id();
+            $table->morphs('tokenable');
+            $table->string('name');
+            $table->string('token', 64)->unique();
+            $table->text('abilities')->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('personal_access_tokens');
+    }
+};
+
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022208_create_settings_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('settings', function (Blueprint $table) {
+            $table->id();
+             $table->string('key')->unique();    // contoh: site_name, site_logo, youtube_channel_url
+            $table->text('value')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('settings');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022222_create_course_categories_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('course_categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->unique();
+            $table->string('slug')->unique();
+            $table->string('icon')->nullable();     // font awesome class
+            $table->string('image')->nullable();
+            $table->boolean('status')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('course_categories');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022304_create_course_levels_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('course_levels', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');         // contoh: Beginner, Intermediate, Advanced
+            $table->string('slug')->unique();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('course_levels');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022347_create_blog_categories_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('blog_categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->boolean('status')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('blog_categories');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022412_create_courses_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('courses', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('category_id')->nullable()->constrained('course_categories')->nullOnDelete();
+            $table->foreignId('course_level_id')->nullable()->constrained('course_levels')->nullOnDelete();
+ 
+            // Informasi utama
+            $table->string('title');
+            $table->string('slug')->unique();
+            $table->string('seo_description')->nullable();
+            $table->text('description')->nullable();
+ 
+            // Media
+            $table->string('thumbnail')->nullable();
+            $table->enum('demo_video_storage', ['upload', 'youtube', 'vimeo', 'external_link'])->nullable();
+            $table->text('demo_video_source')->nullable();
+ 
+            // Detail kursus
+            $table->string('duration')->nullable();     // contoh: 10 jam 30 menit
+            $table->boolean('certificate')->default(false);
+            $table->boolean('qna')->default(false);
+ 
+            // Syarat akses â€” harus subscribe YouTube
+            $table->boolean('require_youtube_subscribe')->default(true);
+ 
+            // Status
+            $table->enum('status', ['draft', 'active', 'inactive'])->default('draft')->index();
+ 
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('courses');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022504_create_portfolios_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('portfolios', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('title');
+            $table->text('description')->nullable();
+            $table->string('thumbnail')->nullable();
+            $table->string('project_url')->nullable();  // link demo/live
+            $table->string('github_url')->nullable();   // link source code
+            $table->enum('type', ['web', 'mobile', 'design', 'other'])->default('web');
+            $table->integer('order')->default(0);       // urutan tampil
+            $table->boolean('status')->default(true)->index();
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('portfolios');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022521_create_blogs_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('blogs', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('blog_category_id')->constrained('blog_categories')->onDelete('cascade');
+ 
+            $table->string('title');
+            $table->string('slug')->unique();
+            $table->string('image')->nullable();
+            $table->text('description');
+            $table->string('seo_description')->nullable();
+            $table->boolean('status')->default(true)->index();
+ 
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('blogs');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022532_create_blog_comments_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('blog_comments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('blog_id')->constrained('blogs')->onDelete('cascade');
+ 
+            $table->text('comment');
+            $table->boolean('status')->default(true)->index(); // moderasi komentar
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('blog_comments');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022541_create_course_chapters_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('course_chapters', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+ 
+            $table->string('title');
+            $table->integer('order')->default(0);   // urutan bab
+            $table->boolean('status')->default(true);
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('course_chapters');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022552_create_course_lessons_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('course_lessons', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('chapter_id')->constrained('course_chapters')->onDelete('cascade');
+ 
+            $table->string('title');
+            $table->string('slug');
+            $table->text('description')->nullable();
+ 
+            // Sumber materi
+            $table->text('file_path')->nullable();
+            $table->enum('storage', ['upload', 'youtube', 'vimeo', 'external_link'])->default('youtube');
+            $table->enum('file_type', ['video', 'audio', 'pdf', 'doc', 'file'])->default('video');
+            $table->string('duration')->nullable();     // contoh: 12:34
+            $table->string('volume')->nullable();       // ukuran file
+ 
+            // Pengaturan
+            $table->boolean('is_preview')->default(false);  // bisa ditonton tanpa enroll
+            $table->boolean('downloadable')->default(false);
+            $table->integer('order')->default(0);
+            $table->boolean('status')->default(true);
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('course_lessons');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024213_create_carts_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('carts', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+ 
+            $table->timestamps();
+ 
+            // Satu user hanya bisa tambah kursus yang sama sekali
+            $table->unique(['user_id', 'course_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('carts');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024305_create_orders_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('orders', function (Blueprint $table) {
+            $table->id();
+            $table->string('invoice_id')->unique();  // contoh: INV-20240101-0001
+ 
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+ 
+            // Status alur checkout
+            $table->enum('status', [
+                'pending',              // baru checkout, belum subscribe
+                'waiting_verification', // sudah klaim subscribe, menunggu verifikasi admin
+                'verified',             // admin konfirmasi sudah subscribe â†’ akses dibuka
+                'failed',               // verifikasi gagal / tidak subscribe
+                'cancelled',            // dibatalkan user
+            ])->default('pending')->index();
+ 
+            // Catatan dari admin saat verifikasi
+            $table->text('admin_note')->nullable();
+ 
+            // Waktu verifikasi
+            $table->timestamp('verified_at')->nullable();
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('orders');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024335_create_order_items_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('order_items', function (Blueprint $table) {
+            $table->id();
+             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+ 
+            // Snapshot data kursus saat checkout
+            // (jaga-jaga kalau judul kursus diubah setelah checkout)
+            $table->string('course_title');
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('order_items');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024855_create_youtube_verifications_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('youtube_verifications', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
+ 
+            // Screenshot bukti subscribe yang diupload user (opsional tapi disarankan)
+            $table->string('proof_image')->nullable();
+ 
+            // Nama/URL channel YouTube user (diisi manual oleh user)
+            $table->string('youtube_channel_name')->nullable();
+            $table->string('youtube_channel_url')->nullable();
+ 
+            // Status verifikasi
+            $table->enum('status', [
+                'pending',   // user sudah klaim, menunggu admin cek
+                'approved',  // admin konfirmasi subscribe â†’ trigger buka akses
+                'rejected',  // admin tolak â†’ user diminta subscribe ulang
+            ])->default('pending')->index();
+ 
+            // Catatan admin saat approve/reject
+            $table->text('admin_note')->nullable();
+ 
+            // Siapa admin yang verifikasi dan kapan
+            $table->foreignId('verified_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('verified_at')->nullable();
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('youtube_verifications');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024912_create_enrollments_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('enrollments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('order_id')->nullable()->constrained('orders')->nullOnDelete();
+ 
+            $table->boolean('have_access')->default(true)->index(); // bisa dicabut admin
+            $table->timestamp('enrolled_at')->nullable();           // waktu akses dibuka
+ 
+            $table->timestamps();
+ 
+            // Satu user hanya bisa enroll kursus yang sama sekali
+            $table->unique(['user_id', 'course_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('enrollments');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024921_create_reviews_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('reviews', function (Blueprint $table) {
+            $table->id();
+              $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+ 
+            $table->text('review');
+            $table->tinyInteger('rating')->default(5);  // 1 - 5 bintang
+            $table->boolean('status')->default(true)->index();
+ 
+            $table->timestamps();
+ 
+            // Satu user hanya bisa review kursus yang sama sekali
+            $table->unique(['user_id', 'course_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('reviews');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024933_create_lesson_progress_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('lesson_progress', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('lesson_id')->constrained('course_lessons')->onDelete('cascade');
+ 
+            $table->boolean('is_completed')->default(false)->index();
+            $table->integer('watched_seconds')->default(0); // progress video dalam detik
+ 
+            $table->timestamps();
+ 
+            // Satu user hanya punya satu progress per lesson
+            $table->unique(['user_id', 'lesson_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('lesson_progress');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024949_create_wishlists_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('wishlists', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+ 
+            $table->timestamps();
+ 
+            // Satu user hanya bisa wishlist kursus yang sama sekali
+            $table->unique(['user_id', 'course_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('wishlists');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_024958_create_certificates_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('certificates', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+ 
+            $table->string('certificate_number')->unique(); // contoh: CERT-2024-00001
+            $table->string('file_path')->nullable();        // path file PDF sertifikat
+            $table->timestamp('issued_at')->nullable();     // tanggal diterbitkan
+ 
+            $table->timestamps();
+ 
+            // Satu user hanya punya satu sertifikat per kursus
+            $table->unique(['user_id', 'course_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('certificates');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025008_create_notifications_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+ 
+            $table->string('title');
+            $table->text('message');
+            $table->string('url')->nullable();          // link tujuan saat notif diklik
+            $table->boolean('is_read')->default(false)->index();
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('notifications');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025047_create_testimonials_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('testimonials', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('title')->nullable();        // jabatan/profesi
+            $table->string('image')->nullable();
+            $table->text('review');
+            $table->tinyInteger('rating')->default(5);
+            $table->integer('order')->default(0);
+            $table->boolean('status')->default(true)->index();
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('testimonials');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025050_create_newsletters_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('newsletters', function (Blueprint $table) {
+            $table->id();
+            $table->string('email')->unique();
+            $table->boolean('is_active')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('newsletters');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025055_create_faqs_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('faqs', function (Blueprint $table) {
+            $table->id();
+             $table->string('question');
+            $table->text('answer');
+            $table->integer('order')->default(0);
+            $table->boolean('status')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('faqs');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025106_create_contacts_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('contacts', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email');
+            $table->string('subject')->nullable();
+            $table->text('message');
+            $table->boolean('is_read')->default(false)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('contacts');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025112_create_social_links_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('social_links', function (Blueprint $table) {
+            $table->id();
+            $table->string('platform');             // contoh: Instagram, GitHub, YouTube
+            $table->string('icon')->nullable();     // font awesome class
+            $table->string('url');
+            $table->integer('order')->default(0);
+            $table->boolean('status')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('social_links');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025117_create_banners_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('banners', function (Blueprint $table) {
+            $table->id();
+          $table->string('title');
+            $table->text('subtitle')->nullable();
+            $table->string('image')->nullable();
+            $table->string('button_text')->nullable();
+            $table->string('button_url')->nullable();
+            $table->integer('order')->default(0);
+            $table->boolean('status')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('banners');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025129_create_tags_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('tags', function (Blueprint $table) {
+            $table->id();
+              $table->string('name');
+            $table->string('slug')->unique();
+            $table->timestamps();
+        });
+ 
+        // â”€â”€ Course Tags (pivot many-to-many) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // php artisan make:model CourseTag -m  (opsional, pivot bisa tanpa model)
+        Schema::create('course_tags', function (Blueprint $table) {
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('tag_id')->constrained('tags')->onDelete('cascade');
+            $table->primary(['course_id', 'tag_id']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('course_tags');
+        Schema::dropIfExists('tags');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025139_create_discussion_threads_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('discussion_threads', function (Blueprint $table) {
+            $table->id();
+               $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade');
+            $table->foreignId('lesson_id')->nullable()->constrained('course_lessons')->nullOnDelete();
+ 
+            $table->string('title');
+            $table->text('body');
+            $table->boolean('is_solved')->default(false)->index();
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('discussion_threads');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_025144_create_discussion_replies_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('discussion_replies', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('thread_id')->constrained('discussion_threads')->onDelete('cascade');
+ 
+            $table->text('body');
+            $table->boolean('is_answer')->default(false); // tandai sebagai jawaban terbaik
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('discussion_replies');
+    }
+};

@@ -22,19 +22,15 @@
                     @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Konten <span style="color:#EF4444;">*</span></label>
-                    <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                        rows="14" placeholder="Konten blog...">{{ old('description', $blog->description) }}</textarea>
-                    @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">SEO Description</label>
                     <input type="text" name="seo_description" class="form-control"
                         value="{{ old('seo_description', $blog->seo_description) }}" maxlength="255">
                 </div>
             </div>
+
+            {{-- Blok teks & gambar --}}
+            @include('admin.blogs._blocks')
         </div>
 
         {{-- Kanan --}}
@@ -78,6 +74,7 @@
                 @endif
                 <input type="file" name="image" class="form-control" accept="image/*"
                     onchange="previewImage(this,'imgPreview')">
+                @error('image') <div class="invalid-feedback" style="display:block;">{{ $message }}</div> @enderror
             </div>
         </div>
     </div>

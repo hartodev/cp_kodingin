@@ -1,0 +1,3474 @@
+﻿
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Controller.php =====
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+
+class Controller extends BaseController
+{
+    use AuthorizesRequests, ValidatesRequests;
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BannerController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BannerController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Banner;
+use Illuminate\Http\Request;
+
+class BannerController extends Controller
+{
+    public function index()
+    {
+        $banners = Banner::orderBy('order')->get();
+
+        return view('admin.banners.index', compact('banners'));
+    }
+
+    public function create()
+    {
+        return view('admin.banners.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'subtitle'    => 'nullable|string',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'button_text' => 'nullable|string|max:100',
+            'button_url'  => 'nullable|string|max:255',
+            'status'      => 'boolean',
+        ]);
+
+        $data          = $request->except(['image', '_token']);
+        $data['order'] = Banner::max('order') + 1;
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('banners', 'public');
+        }
+
+        Banner::create($data);
+
+        return redirect()->route('admin.banners.index')
+            ->with('success', 'Banner berhasil ditambahkan.');
+    }
+
+    // Route: banners/{banner}
+    public function edit(Banner $banner)
+    {
+        return view('admin.banners.edit', compact('banner'));
+    }
+
+    public function update(Request $request, Banner $banner)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'subtitle'    => 'nullable|string',
+            'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'button_text' => 'nullable|string|max:100',
+            'button_url'  => 'nullable|string|max:255',
+            'status'      => 'boolean',
+        ]);
+
+        $data = $request->except(['image', '_token', '_method']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('banners', 'public');
+        }
+
+        $banner->update($data);
+
+        return redirect()->route('admin.banners.index')
+            ->with('success', 'Banner berhasil diperbarui.');
+    }
+
+    public function destroy(Banner $banner)
+    {
+        $banner->delete();
+
+        return back()->with('success', 'Banner berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BlogCategoryController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BlogCategoryController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\BlogCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class BlogCategoryController extends Controller
+{
+    public function index()
+    {
+        $categories = BlogCategory::withCount('blogs')->latest()->paginate(15);
+
+        return view('admin.blog-categories.index', compact('categories'));
+    }
+
+    public function create()
+    {
+        return view('admin.blog-categories.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100|unique:blog_categories,name',
+            'status' => 'boolean',
+        ]);
+
+        BlogCategory::create([
+            'name'   => $request->name,
+            'slug'   => Str::slug($request->name),
+            'status' => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.blog-categories.index')
+            ->with('success', 'Kategori blog berhasil ditambahkan.');
+    }
+
+    // Route: blog-categories/{blog_category}
+    public function edit(BlogCategory $blogCategory)
+    {
+        return view('admin.blog-categories.edit', compact('blogCategory'));
+    }
+
+    public function update(Request $request, BlogCategory $blogCategory)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100|unique:blog_categories,name,' . $blogCategory->id,
+            'status' => 'boolean',
+        ]);
+
+        $blogCategory->update([
+            'name'   => $request->name,
+            'slug'   => Str::slug($request->name),
+            'status' => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.blog-categories.index')
+            ->with('success', 'Kategori blog berhasil diperbarui.');
+    }
+
+    public function destroy(BlogCategory $blogCategory)
+    {
+        $blogCategory->delete();
+
+        return redirect()->route('admin.blog-categories.index')
+            ->with('success', 'Kategori blog berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BlogCommentController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BlogCommentController
+
+use App\Http\Controllers\Controller;
+use App\Models\BlogComment;
+use Illuminate\Http\Request;
+
+class BlogCommentController extends Controller
+{
+    public function index(Request $request)
+    {
+        $comments = BlogComment::with(['user', 'blog'])
+            ->when($request->search, fn($q) => $q->where('comment', 'like', "%{$request->search}%"))
+
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status)) // â† fix: pakai has() bukan isset()
+
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.blog-comments.index', compact('comments'));
+    }
+
+    // Route: blog-comments/{comment} â† parameter harus $comment
+    public function destroy(BlogComment $comment)
+    {
+        $comment->delete();
+
+        return back()->with('success', 'Komentar berhasil dihapus.');
+    }
+
+    // Route: blog-comments/{comment}/toggle â† parameter harus $comment
+    public function toggle(BlogComment $blogComment)
+    {
+
+        // â”€â”€ Fix: simpan nilai BARU dulu sebelum update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        $newStatus = ! $blogComment->status;
+
+        $blogComment->update(['status' => $newStatus]);
+
+        // â† pakai $newStatus, bukan $blogComment->status (sudah berubah setelah update)
+
+        $newStatus = ! $blogComment->status;
+
+        $blogComment->update(['status' => $newStatus]);
+
+        $label = $newStatus ? 'ditampilkan' : 'disembunyikan';
+
+        return back()->with('success', "Komentar berhasil {$label}.");
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BlogController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BlogController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\BlogCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class BlogController extends Controller
+{
+    public function index(Request $request)
+    {
+        $blogs = Blog::with(['category', 'user'])
+            ->withCount('comments')
+            ->when($request->search, fn($q) => $q->where('title', 'like', "%{$request->search}%"))
+            ->when($request->category, fn($q) => $q->where('blog_category_id', $request->category))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $categories = BlogCategory::active()->get();
+
+        return view('admin.blogs.index', compact('blogs', 'categories'));
+    }
+
+    public function create()
+    {
+        $categories = BlogCategory::active()->get();
+
+        return view('admin.blogs.create', compact('categories'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title'            => 'required|string|max:255',
+            'blog_category_id' => 'required|exists:blog_categories,id',
+            'description'      => 'required|string',
+            'seo_description'  => 'nullable|string|max:255',
+            'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'           => 'boolean',
+        ]);
+
+        $data            = $request->except(['image', '_token']);
+        $data['slug']    = Str::slug($request->title);
+        $data['user_id'] = auth()->id();
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('blogs', 'public');
+        }
+
+        Blog::create($data);
+
+        return redirect()->route('admin.blogs.index')
+            ->with('success', 'Blog berhasil dipublikasikan.');
+    }
+
+    // Route: blogs/{blog}
+    public function show(Blog $blog)
+    {
+        $blog->load(['category', 'comments.user']);
+
+        return view('admin.blogs.show', compact('blog'));
+    }
+
+    public function edit(Blog $blog)
+    {
+        $categories = BlogCategory::active()->get();
+
+        return view('admin.blogs.edit', compact('blog', 'categories'));
+    }
+
+    public function update(Request $request, Blog $blog)
+    {
+        $request->validate([
+            'title'            => 'required|string|max:255',
+            'blog_category_id' => 'required|exists:blog_categories,id',
+            'description'      => 'required|string',
+            'seo_description'  => 'nullable|string|max:255',
+            'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'           => 'boolean',
+        ]);
+
+        $data         = $request->except(['image', '_token', '_method']);
+        $data['slug'] = Str::slug($request->title);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('blogs', 'public');
+        }
+
+        $blog->update($data);
+
+        return redirect()->route('admin.blogs.index')
+            ->with('success', 'Blog berhasil diperbarui.');
+    }
+
+    public function destroy(Blog $blog)
+    {
+        $blog->delete();
+
+        return redirect()->route('admin.blogs.index')
+            ->with('success', 'Blog berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\ContactController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/ContactController
+
+use App\Http\Controllers\Controller;
+use App\Models\Contact;
+use Illuminate\Http\Request;
+
+class ContactController extends Controller
+{
+    public function index(Request $request)
+    {
+        $contacts = Contact::when($request->search, fn($q) =>
+        $q->where('name', 'like', "%{$request->search}%")
+            ->orWhere('email', 'like', "%{$request->search}%")
+            ->orWhere('subject', 'like', "%{$request->search}%"))
+
+            ->when($request->has('is_read'), fn($q) => $q->where('is_read', $request->is_read)) // â† fix: pakai has()
+
+            ->when($request->has('is_read'), fn($q) => $q->where('is_read', $request->is_read))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $unreadCount = Contact::where('is_read', false)->count();
+
+        return view('admin.contacts.index', compact('contacts', 'unreadCount'));
+    }
+
+    // Route: contacts/{contact}
+    public function show(Contact $contact)
+    {
+        // â”€â”€ Fix: cek sebelum update, bukan dari properti model â”€â”€â”€â”€â”€
+        $wasUnread = ! $contact->is_read;
+
+        if ($wasUnread) {
+            if (! $contact->is_read) {
+                $contact->update(['is_read' => true]);
+            }
+
+            return view('admin.contacts.show', compact('contact'));
+        }
+    }
+
+
+
+    public function destroy(Contact $contact)
+    {
+        $contact->delete();
+
+        return redirect()->route('admin.contacts.index')
+            ->with('success', 'Pesan berhasil dihapus.');
+    }
+    public function markRead(Contact $contact)
+    {
+        $contact->update(['is_read' => true]);
+
+        return back()->with('success', 'Pesan ditandai sudah dibaca.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\CourseCategoryController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/CourseCategoryController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\CourseCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CourseCategoryController extends Controller
+{
+    public function index()
+    {
+        $categories = CourseCategory::withCount('courses')->latest()->paginate(15);
+
+        return view('admin.categories.index', compact('categories'));
+    }
+
+    public function create()
+    {
+        return view('admin.categories.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100|unique:course_categories,name',
+            'icon'   => 'nullable|string|max:100',
+            'image'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
+            'status' => 'boolean',
+        ]);
+
+        $data         = $request->except(['image', '_token']);
+        $data['slug'] = Str::slug($request->name);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('categories', 'public');
+        }
+
+        CourseCategory::create($data);
+
+        return redirect()->route('admin.categories.index')
+            ->with('success', 'Kategori berhasil ditambahkan.');
+    }
+
+    // Route: categories/{category}
+    public function edit(CourseCategory $category)
+    {
+        return view('admin.categories.edit', compact('category'));
+    }
+
+    public function update(Request $request, CourseCategory $category)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100|unique:course_categories,name,' . $category->id, // â† $category->id sudah benar, masalahnya cuma missing use Str
+            'icon'   => 'nullable|string|max:100',
+            'image'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
+            'status' => 'boolean',
+        ]);
+
+        $data         = $request->except(['image', '_token', '_method']);
+        $data['slug'] = Str::slug($request->name);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('categories', 'public');
+        }
+
+        $category->update($data);
+
+        return redirect()->route('admin.categories.index')
+            ->with('success', 'Kategori berhasil diperbarui.');
+    }
+
+    public function destroy(CourseCategory $category)
+    {
+        $category->delete();
+
+        return redirect()->route('admin.categories.index')
+            ->with('success', 'Kategori berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\CourseChapterController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/CourseChapterController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseChapter;
+use Illuminate\Http\Request;
+
+class CourseChapterController extends Controller
+{
+    // Route: courses/{course}/chapters
+    public function index(Course $course)
+    {
+        $course->load('chapters.lessons');
+
+        return view('admin.courses.chapters.index', compact('course'));
+    }
+
+    public function create(Course $course)
+    {
+        return view('admin.courses.chapters.create', compact('course'));
+    }
+
+    public function store(Request $request, Course $course)
+    {
+        $request->validate([
+            'title'  => 'required|string|max:255',
+            'status' => 'boolean',
+        ]);
+
+        $order = $course->chapters()->max('order') + 1;
+
+        $course->chapters()->create([
+            'title'  => $request->title,
+            'order'  => $order,
+            'status' => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.courses.chapters.index', $course)
+            ->with('success', 'Chapter berhasil ditambahkan.');
+    }
+
+    // Route: courses/{course}/chapters/{chapter}
+    public function edit(Course $course, CourseChapter $chapter)
+    {
+        return view('admin.courses.chapters.edit', compact('course', 'chapter'));
+    }
+
+    public function update(Request $request, Course $course, CourseChapter $chapter)
+    {
+        $request->validate([
+            'title'  => 'required|string|max:255',
+            'status' => 'boolean',
+        ]);
+
+        $chapter->update([
+            'title'  => $request->title,
+            'status' => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.courses.chapters.index', $course)
+            ->with('success', 'Chapter berhasil diperbarui.');
+    }
+
+    public function destroy(Course $course, CourseChapter $chapter)
+    {
+        $chapter->delete();
+
+        return redirect()->route('admin.courses.chapters.index', $course)
+            ->with('success', 'Chapter berhasil dihapus.');
+    }
+
+    public function reorder(Request $request, Course $course)
+    {
+        $request->validate(['orders' => 'required|array']);
+
+        foreach ($request->orders as $item) {
+            CourseChapter::where('id', $item['id'])->update(['order' => $item['order']]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\CourseController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/CourseController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseCategory;
+use App\Models\CourseLevel;
+use App\Models\Tag;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CourseController extends Controller
+{
+    public function index(Request $request)
+    {
+        $courses = Course::with(['category', 'level'])
+            ->withCount(['enrollments' => fn($q) => $q->where('have_access', true), 'reviews'])
+            ->when($request->search, fn($q) => $q->where('title', 'like', "%{$request->search}%"))
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->category, fn($q) => $q->where('category_id', $request->category))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $categories = CourseCategory::active()->get();
+
+        return view('admin.courses.index', compact('courses', 'categories'));
+    }
+
+    public function create()
+    {
+        $categories = CourseCategory::active()->get();
+        $levels     = CourseLevel::all();
+        $tags       = Tag::all();
+
+        return view('admin.courses.create', compact('categories', 'levels', 'tags'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title'                     => 'required|string|max:255',
+            'category_id'               => 'nullable|exists:course_categories,id',
+            'course_level_id'           => 'nullable|exists:course_levels,id',
+            'description'               => 'nullable|string',
+            'seo_description'           => 'nullable|string|max:255',
+            'thumbnail'                 => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'demo_video_storage'        => 'nullable|in:upload,youtube,vimeo,external_link',
+            'demo_video_source'         => 'nullable|string',
+            'duration'                  => 'nullable|string|max:100',
+            'certificate'               => 'boolean',
+            'qna'                       => 'boolean',
+            'require_youtube_subscribe' => 'boolean',
+            'status'                    => 'required|in:draft,active,inactive',
+            'tags'                      => 'nullable|array',
+            'tags.*'                    => 'exists:tags,id',
+        ]);
+
+        $data            = $request->except(['thumbnail', 'tags', '_token']);
+        $data['slug']    = Str::slug($request->title) . '-' . Str::random(5);
+        $data['user_id'] = auth()->id();
+
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail'] = $request->file('thumbnail')->store('courses/thumbnails', 'public');
+        }
+
+        $course = Course::create($data);
+
+        if ($request->tags) {
+            $course->tags()->sync($request->tags);
+        }
+
+        return redirect()->route('admin.courses.index')
+            ->with('success', 'Kursus berhasil dibuat.');
+    }
+
+    public function show(Course $course)
+    {
+        $course->load(['category', 'level', 'tags', 'chapters.lessons', 'enrollments.user', 'reviews.user']);
+
+        return view('admin.courses.show', compact('course'));
+    }
+
+    public function edit(Course $course)
+    {
+        $categories = CourseCategory::active()->get();
+        $levels     = CourseLevel::all();
+        $tags       = Tag::all();
+        $course->load('tags');
+
+        return view('admin.courses.edit', compact('course', 'categories', 'levels', 'tags'));
+    }
+
+    public function update(Request $request, Course $course)
+    {
+        $request->validate([
+            'title'                     => 'required|string|max:255',
+            'category_id'               => 'nullable|exists:course_categories,id',
+            'course_level_id'           => 'nullable|exists:course_levels,id',
+            'description'               => 'nullable|string',
+            'seo_description'           => 'nullable|string|max:255',
+            'thumbnail'                 => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'demo_video_storage'        => 'nullable|in:upload,youtube,vimeo,external_link',
+            'demo_video_source'         => 'nullable|string',
+            'duration'                  => 'nullable|string|max:100',
+            'certificate'               => 'boolean',
+            'qna'                       => 'boolean',
+            'require_youtube_subscribe' => 'boolean',
+            'status'                    => 'required|in:draft,active,inactive',
+            'tags'                      => 'nullable|array',
+            'tags.*'                    => 'exists:tags,id',
+        ]);
+
+        $data = $request->except(['thumbnail', 'tags', '_token', '_method']);
+
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail'] = $request->file('thumbnail')->store('courses/thumbnails', 'public');
+        }
+
+        $course->update($data);
+        $course->tags()->sync($request->tags ?? []);
+
+        return redirect()->route('admin.courses.index')
+            ->with('success', 'Kursus berhasil diperbarui.');
+    }
+
+    public function destroy(Course $course)
+    {
+        $course->delete();
+
+        return redirect()->route('admin.courses.index')
+            ->with('success', 'Kursus berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\CourseLessonController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/CourseLessonController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseChapter;
+use App\Models\CourseLesson;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CourseLessonController extends Controller
+{
+    // Route: courses/{course}/chapters/{chapter}/lessons
+    public function create(Course $course, CourseChapter $chapter)
+    {
+        return view('admin.courses.lessons.create', compact('course', 'chapter'));
+    }
+
+    public function store(Request $request, Course $course, CourseChapter $chapter)
+    {
+        $request->validate([
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'file_path'    => 'nullable|string',
+            'storage'      => 'required|in:upload,youtube,vimeo,external_link',
+            'file_type'    => 'required|in:video,audio,pdf,doc,file',
+            'duration'     => 'nullable|string|max:20',
+            'is_preview'   => 'boolean',
+            'downloadable' => 'boolean',
+            'status'       => 'boolean',
+        ]);
+
+        $order = $chapter->lessons()->max('order') + 1;
+        $slug  = Str::slug($request->title) . '-' . $course->id . '-' . $chapter->id . '-' . $order;
+
+        CourseLesson::create([
+            'course_id'    => $course->id,
+            'chapter_id'   => $chapter->id,
+            'title'        => $request->title,
+            'slug'         => $slug,
+            'description'  => $request->description,
+            'file_path'    => $request->file_path,
+            'storage'      => $request->storage,
+            'file_type'    => $request->file_type,
+            'duration'     => $request->duration,
+            'is_preview'   => $request->boolean('is_preview'),
+            'downloadable' => $request->boolean('downloadable'),
+            'order'        => $order,
+            'status'       => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.courses.chapters.index', $course)
+            ->with('success', 'Lesson berhasil ditambahkan.');
+    }
+
+    // Route: courses/{course}/chapters/{chapter}/lessons/{lesson}
+    public function edit(Course $course, CourseChapter $chapter, CourseLesson $lesson)
+    {
+        return view('admin.courses.lessons.edit', compact('course', 'chapter', 'lesson'));
+    }
+
+    public function update(Request $request, Course $course, CourseChapter $chapter, CourseLesson $lesson)
+    {
+        $request->validate([
+            'title'        => 'required|string|max:255',
+            'description'  => 'nullable|string',
+            'file_path'    => 'nullable|string',
+            'storage'      => 'required|in:upload,youtube,vimeo,external_link',
+            'file_type'    => 'required|in:video,audio,pdf,doc,file',
+            'duration'     => 'nullable|string|max:20',
+            'is_preview'   => 'boolean',
+            'downloadable' => 'boolean',
+            'status'       => 'boolean',
+        ]);
+
+        $lesson->update([
+            'title'        => $request->title,
+            'description'  => $request->description,
+            'file_path'    => $request->file_path,
+            'storage'      => $request->storage,
+            'file_type'    => $request->file_type,
+            'duration'     => $request->duration,
+            'is_preview'   => $request->boolean('is_preview'),
+            'downloadable' => $request->boolean('downloadable'),
+            'status'       => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.courses.chapters.index', $course)
+            ->with('success', 'Lesson berhasil diperbarui.');
+    }
+
+    public function destroy(Course $course, CourseChapter $chapter, CourseLesson $lesson)
+    {
+        $lesson->delete();
+
+        return redirect()->route('admin.courses.chapters.index', $course)
+            ->with('success', 'Lesson berhasil dihapus.');
+    }
+
+    public function reorder(Request $request, Course $course, CourseChapter $chapter)
+    {
+        $request->validate(['orders' => 'required|array']);
+
+        foreach ($request->orders as $item) {
+            CourseLesson::where('id', $item['id'])->update(['order' => $item['order']]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\CourseLevelController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/CourseLevelController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\CourseLevel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CourseLevelController extends Controller
+{
+    public function index()
+    {
+        $levels = CourseLevel::withCount('courses')->get();
+
+        return view('admin.levels.index', compact('levels'));
+    }
+
+    public function create()
+    {
+        return view('admin.levels.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100|unique:course_levels,name',
+        ]);
+
+        CourseLevel::create([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name),
+        ]);
+
+        return redirect()->route('admin.levels.index')
+            ->with('success', 'Level berhasil ditambahkan.');
+    }
+
+    // Route: levels/{level}
+    public function edit(CourseLevel $level)
+    {
+        return view('admin.levels.edit', compact('level'));
+    }
+
+    public function update(Request $request, CourseLevel $level)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100|unique:course_levels,name,' . $level->id,
+        ]);
+
+        $level->update([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name),
+        ]);
+
+        return redirect()->route('admin.levels.index')
+            ->with('success', 'Level berhasil diperbarui.');
+    }
+
+    public function destroy(CourseLevel $level)
+    {
+        $level->delete();
+
+        return redirect()->route('admin.levels.index')
+            ->with('success', 'Level berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\DashboardController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/DashboardController
+
+use App\Http\Controllers\Controller;
+use App\Models\Contact;
+use App\Models\Course;
+use App\Models\Enrollment;
+use App\Models\Order;
+use App\Models\Review;
+use App\Models\User;
+use App\Models\YoutubeVerification;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $stats = [
+            'total_users'       => User::where('role', 'user')->count(),
+            'total_courses'     => Course::count(),
+            'total_enrollments' => Enrollment::where('have_access', true)->count(),
+            'total_orders'      => Order::count(),
+            'pending_verif'     => YoutubeVerification::where('status', 'pending')->count(),
+            'unread_contacts'   => Contact::where('is_read', false)->count(),
+            'total_reviews'     => Review::where('status', true)->count(),
+        ];
+
+        $latestOrders = Order::with(['user', 'items.course'])
+            ->latest()->limit(5)->get();
+
+        $pendingVerifications = YoutubeVerification::with(['user', 'order'])
+            ->where('status', 'pending')->latest()->limit(5)->get();
+
+        $popularCourses = Course::withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
+            ->orderByDesc('enrollments_count')->limit(5)->get();
+
+        $latestUsers = User::where('role', 'user')
+            ->latest()->limit(5)->get();
+
+        return view('admin.dashboard', compact(
+            'stats',
+            'latestOrders',
+            'pendingVerifications',
+            'popularCourses',
+            'latestUsers'
+        ));
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\DiscussionController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/DiscussionController
+
+use App\Http\Controllers\Controller;
+use App\Models\DiscussionThread;
+use Illuminate\Http\Request;
+
+class DiscussionController extends Controller
+{
+    public function index(Request $request)
+    {
+        $threads = DiscussionThread::with(['user', 'course', 'lesson'])
+            ->withCount('replies')
+            ->when($request->search, fn($q) =>
+                $q->where('title', 'like', "%{$request->search}%"))
+            ->when($request->course, fn($q) =>
+                $q->where('course_id', $request->course))
+            ->when($request->has('is_solved'), fn($q) =>
+                $q->where('is_solved', $request->is_solved))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.discussions.index', compact('threads'));
+    }
+
+    // Route: discussions/{discussion}
+    public function show(DiscussionThread $discussion)
+    {
+        $discussion->load(['user', 'course', 'lesson', 'replies.user']);
+
+        return view('admin.discussions.show', compact('discussion'));
+    }
+
+    public function destroy(DiscussionThread $discussion)
+    {
+        $discussion->delete();
+
+        return redirect()->route('admin.discussions.index')
+            ->with('success', 'Thread diskusi berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\DiscussionReplyController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/DiscussionReplyController
+
+use App\Http\Controllers\Controller;
+use App\Models\DiscussionReply;
+
+class DiscussionReplyController extends Controller
+{
+    // Route: discussion-replies/{discussion_reply}
+    public function destroy(DiscussionReply $discussionReply)
+    {
+        $discussionReply->delete();
+
+        return back()->with('success', 'Balasan diskusi berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\EnrollmentController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/EnrollmentController
+
+use App\Http\Controllers\Controller;
+use App\Models\Enrollment;
+use Illuminate\Http\Request;
+
+class EnrollmentController extends Controller
+{
+    public function index(Request $request)
+    {
+        $enrollments = Enrollment::with(['user', 'course'])
+            ->when($request->search, fn($q) => $q->whereHas('user', fn($q) =>
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%")
+            ))
+            ->when($request->course, fn($q) => $q->where('course_id', $request->course))
+            ->when($request->access, fn($q) => $q->where('have_access', $request->access === 'yes'))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.enrollments.index', compact('enrollments'));
+    }
+
+    // Route: enrollments/{enrollment}
+    public function show(Enrollment $enrollment)
+    {
+        $enrollment->load(['user', 'course', 'order']);
+
+        return view('admin.enrollments.show', compact('enrollment'));
+    }
+
+    public function destroy(Enrollment $enrollment)
+    {
+        $enrollment->delete();
+
+        return redirect()->route('admin.enrollments.index')
+            ->with('success', 'Enrollment berhasil dihapus.');
+    }
+
+    // Route: enrollments/{enrollment}/toggle-access
+    public function toggleAccess(Enrollment $enrollment)
+    {
+        $newAccess = ! $enrollment->have_access;
+
+        $enrollment->update(['have_access' => $newAccess]);
+
+        $label = $newAccess ? 'dibuka' : 'dicabut';
+
+        return back()->with('success', "Akses kursus berhasil {$label}.");
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\FaqController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/FaqController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Faq;
+use Illuminate\Http\Request;
+
+class FaqController extends Controller
+{
+    public function index()
+    {
+        $faqs = Faq::orderBy('order')->paginate(15);
+
+        return view('admin.faqs.index', compact('faqs'));
+    }
+
+    public function create()
+    {
+        return view('admin.faqs.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'question' => 'required|string|max:255',
+            'answer'   => 'required|string',
+            'status'   => 'boolean',
+        ]);
+
+        Faq::create([
+            'question' => $request->question,
+            'answer'   => $request->answer,
+            'order'    => Faq::max('order') + 1,
+            'status'   => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.faqs.index')
+            ->with('success', 'FAQ berhasil ditambahkan.');
+    }
+
+    // Route: faqs/{faq}
+    public function edit(Faq $faq)
+    {
+        return view('admin.faqs.edit', compact('faq'));
+    }
+
+    public function update(Request $request, Faq $faq)
+    {
+        $request->validate([
+            'question' => 'required|string|max:255',
+            'answer'   => 'required|string',
+            'status'   => 'boolean',
+        ]);
+
+        $faq->update([
+            'question' => $request->question,
+            'answer'   => $request->answer,
+            'status'   => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.faqs.index')
+            ->with('success', 'FAQ berhasil diperbarui.');
+    }
+
+    public function destroy(Faq $faq)
+    {
+        $faq->delete();
+
+        return back()->with('success', 'FAQ berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\NewsletterController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/NewsletterController
+
+use App\Http\Controllers\Controller;
+use App\Models\Newsletter;
+use Illuminate\Http\Request;
+
+class NewsletterController extends Controller
+{
+    public function index(Request $request)
+    {
+        $newsletters = Newsletter::when($request->search, fn($q) =>
+                $q->where('email', 'like', "%{$request->search}%"))
+            ->when($request->has('is_active'), fn($q) =>
+                $q->where('is_active', $request->is_active))
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.newsletters.index', compact('newsletters'));
+    }
+
+    // Route: newsletters/{newsletter}
+    public function destroy(Newsletter $newsletter)
+    {
+        $newsletter->delete();
+
+        return back()->with('success', 'Subscriber berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\OrderController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/OrderController
+
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use Illuminate\Http\Request;
+
+class OrderController extends Controller
+{
+    public function index(Request $request)
+    {
+        $orders = Order::with(['user', 'items.course'])
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->search, fn($q) => $q->where(function ($q) use ($request) {
+                $q->where('invoice_id', 'like', "%{$request->search}%")
+                  ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$request->search}%"));
+            }))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.orders.index', compact('orders'));
+    }
+
+    // Route: orders/{order}
+    public function show(Order $order)
+    {
+        $order->load(['user', 'items.course', 'youtubeVerification.verifiedBy']);
+
+        return view('admin.orders.show', compact('order'));
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\PortfolioController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/PortfolioController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Portfolio;
+use Illuminate\Http\Request;
+
+class PortfolioController extends Controller
+{
+    public function index()
+    {
+        $portfolios = Portfolio::orderBy('order')->get();
+
+        return view('admin.portfolios.index', compact('portfolios'));
+    }
+
+    public function create()
+    {
+        return view('admin.portfolios.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'thumbnail'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'project_url' => 'nullable|url',
+            'github_url'  => 'nullable|url',
+            'type'        => 'required|in:web,mobile,design,other',
+            'status'      => 'boolean',
+        ]);
+
+        $data            = $request->except(['thumbnail', '_token']);
+        $data['user_id'] = auth()->id();
+        $data['order']   = Portfolio::max('order') + 1;
+
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail'] = $request->file('thumbnail')->store('portfolios', 'public');
+        }
+
+        Portfolio::create($data);
+
+        return redirect()->route('admin.portfolios.index')
+            ->with('success', 'Portfolio berhasil ditambahkan.');
+    }
+
+    // Route: portfolios/{portfolio}
+    public function edit(Portfolio $portfolio)
+    {
+        return view('admin.portfolios.edit', compact('portfolio'));
+    }
+
+    public function update(Request $request, Portfolio $portfolio)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'thumbnail'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'project_url' => 'nullable|url',
+            'github_url'  => 'nullable|url',
+            'type'        => 'required|in:web,mobile,design,other',
+            'status'      => 'boolean',
+        ]);
+
+        $data = $request->except(['thumbnail', '_token', '_method']);
+
+        if ($request->hasFile('thumbnail')) {
+            $data['thumbnail'] = $request->file('thumbnail')->store('portfolios', 'public');
+        }
+
+        $portfolio->update($data);
+
+        return redirect()->route('admin.portfolios.index')
+            ->with('success', 'Portfolio berhasil diperbarui.');
+    }
+
+    public function destroy(Portfolio $portfolio)
+    {
+        $portfolio->delete();
+
+        return redirect()->route('admin.portfolios.index')
+            ->with('success', 'Portfolio berhasil dihapus.');
+    }
+
+    public function reorder(Request $request)
+    {
+        $request->validate(['orders' => 'required|array']);
+
+        foreach ($request->orders as $item) {
+            Portfolio::where('id', $item['id'])->update(['order' => $item['order']]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\ReviewController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/ReviewController
+
+use App\Http\Controllers\Controller;
+use App\Models\Review;
+use Illuminate\Http\Request;
+
+class ReviewController extends Controller
+{
+    public function index(Request $request)
+    {
+        $reviews = Review::with(['user', 'course'])
+            ->when($request->search, fn($q) => $q->whereHas('user', fn($q) =>
+                $q->where('name', 'like', "%{$request->search}%")
+            ))
+            ->when($request->rating, fn($q) => $q->where('rating', $request->rating))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.reviews.index', compact('reviews'));
+    }
+
+    // Route: reviews/{review}
+    public function destroy(Review $review)
+    {
+        $review->delete();
+
+        return back()->with('success', 'Review berhasil dihapus.');
+    }
+
+    // Route: reviews/{review}/toggle
+    public function toggle(Review $review)
+    {
+        $newStatus = ! $review->status;
+
+        $review->update(['status' => $newStatus]);
+
+        $label = $newStatus ? 'ditampilkan' : 'disembunyikan';
+
+        return back()->with('success', "Review berhasil {$label}.");
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\SettingController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/SettingController
+
+use App\Http\Controllers\Controller;
+use App\Models\Setting;
+use Illuminate\Http\Request;
+
+class SettingController extends Controller
+{
+    public function index()
+    {
+        $settings = Setting::all()->pluck('value', 'key');
+
+        return view('admin.settings.index', compact('settings'));
+    }
+
+    public function update(Request $request)
+    {
+        $request->validate([
+            'site_name'            => 'required|string|max:100',
+            'site_email'           => 'required|email',
+            'site_phone'           => 'nullable|string|max:20',
+            'site_address'         => 'nullable|string|max:255',
+            'site_description'     => 'nullable|string|max:500',
+            'youtube_channel_url'  => 'nullable|url',
+            'youtube_channel_name' => 'nullable|string|max:100',
+            'meta_title'           => 'nullable|string|max:255',
+            'meta_description'     => 'nullable|string|max:255',
+            'meta_keywords'        => 'nullable|string|max:255',
+            'google_analytics_id'  => 'nullable|string|max:50',
+            'footer_copyright'     => 'nullable|string|max:255',
+            'footer_description'   => 'nullable|string|max:500',
+            'site_logo'            => 'nullable|image|mimes:png,jpg,svg|max:1024',
+            'site_favicon'         => 'nullable|image|mimes:png,ico|max:512',
+        ]);
+
+        if ($request->hasFile('site_logo')) {
+            Setting::set('site_logo', $request->file('site_logo')->store('settings', 'public'));
+        }
+
+        if ($request->hasFile('site_favicon')) {
+            Setting::set('site_favicon', $request->file('site_favicon')->store('settings', 'public'));
+        }
+
+        $textKeys = [
+            'site_name', 'site_email', 'site_phone', 'site_address', 'site_description',
+            'site_tagline', 'youtube_channel_url', 'youtube_channel_name', 'youtube_channel_id',
+            'meta_title', 'meta_description', 'meta_keywords', 'google_analytics_id',
+            'footer_copyright', 'footer_description',
+        ];
+
+        foreach ($textKeys as $key) {
+            if ($request->has($key)) {
+                Setting::set($key, $request->input($key));
+            }
+        }
+
+        return back()->with('success', 'Pengaturan berhasil disimpan.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\SocialLinkController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/SocialLinkController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\SocialLink;
+use Illuminate\Http\Request;
+
+class SocialLinkController extends Controller
+{
+    public function index()
+    {
+        $socialLinks = SocialLink::orderBy('order')->get();
+
+        return view('admin.social-links.index', compact('socialLinks'));
+    }
+
+    public function create()
+    {
+        return view('admin.social-links.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'platform' => 'required|string|max:100',
+            'icon'     => 'nullable|string|max:100',
+            'url'      => 'required|url',
+            'status'   => 'boolean',
+        ]);
+
+        SocialLink::create([
+            'platform' => $request->platform,
+            'icon'     => $request->icon,
+            'url'      => $request->url,
+            'order'    => SocialLink::max('order') + 1,
+            'status'   => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.social-links.index')
+            ->with('success', 'Social link berhasil ditambahkan.');
+    }
+
+    // Route: social-links/{social_link}
+    public function edit(SocialLink $socialLink)
+    {
+        return view('admin.social-links.edit', compact('socialLink'));
+    }
+
+    public function update(Request $request, SocialLink $socialLink)
+    {
+        $request->validate([
+            'platform' => 'required|string|max:100',
+            'icon'     => 'nullable|string|max:100',
+            'url'      => 'required|url',
+            'status'   => 'boolean',
+        ]);
+
+        $socialLink->update([
+            'platform' => $request->platform,
+            'icon'     => $request->icon,
+            'url'      => $request->url,
+            'status'   => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.social-links.index')
+            ->with('success', 'Social link berhasil diperbarui.');
+    }
+
+    public function destroy(SocialLink $socialLink)
+    {
+        $socialLink->delete();
+
+        return back()->with('success', 'Social link berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\TagController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/TagController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Tag;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class TagController extends Controller
+{
+    public function index()
+    {
+        $tags = Tag::withCount('courses')->latest()->paginate(20);
+
+        return view('admin.tags.index', compact('tags'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100|unique:tags,name',
+        ]);
+
+        Tag::create([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name),
+        ]);
+
+        return back()->with('success', 'Tag berhasil ditambahkan.');
+    }
+
+    // Route: tags/{tag}
+    public function update(Request $request, Tag $tag)
+    {
+        $request->validate([
+            'name' => 'required|string|max:100|unique:tags,name,' . $tag->id,
+        ]);
+
+        $tag->update([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name),
+        ]);
+
+        return back()->with('success', 'Tag berhasil diperbarui.');
+    }
+
+    public function destroy(Tag $tag)
+    {
+        $tag->delete();
+
+        return back()->with('success', 'Tag berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\TestimonialController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/TestimonialController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Testimonial;
+use Illuminate\Http\Request;
+
+class TestimonialController extends Controller
+{
+    public function index()
+    {
+        $testimonials = Testimonial::orderBy('order')->paginate(15);
+
+        return view('admin.testimonials.index', compact('testimonials'));
+    }
+
+    public function create()
+    {
+        return view('admin.testimonials.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100',
+            'title'  => 'nullable|string|max:100',
+            'image'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
+            'review' => 'required|string',
+            'rating' => 'required|integer|min:1|max:5',
+            'status' => 'boolean',
+        ]);
+
+        $data          = $request->except(['image', '_token']);
+        $data['order'] = Testimonial::max('order') + 1;
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('testimonials', 'public');
+        }
+
+        Testimonial::create($data);
+
+        return redirect()->route('admin.testimonials.index')
+            ->with('success', 'Testimoni berhasil ditambahkan.');
+    }
+
+    // Route: testimonials/{testimonial}
+    public function edit(Testimonial $testimonial)
+    {
+        return view('admin.testimonials.edit', compact('testimonial'));
+    }
+
+    public function update(Request $request, Testimonial $testimonial)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100',
+            'title'  => 'nullable|string|max:100',
+            'image'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
+            'review' => 'required|string',
+            'rating' => 'required|integer|min:1|max:5',
+            'status' => 'boolean',
+        ]);
+
+        $data = $request->except(['image', '_token', '_method']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('testimonials', 'public');
+        }
+
+        $testimonial->update($data);
+
+        return redirect()->route('admin.testimonials.index')
+            ->with('success', 'Testimoni berhasil diperbarui.');
+    }
+
+    public function destroy(Testimonial $testimonial)
+    {
+        $testimonial->delete();
+
+        return back()->with('success', 'Testimoni berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\UserController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/UserController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+class UserController extends Controller
+{
+    public function index(Request $request)
+    {
+        $users = User::where('role', 'user')
+            ->withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
+            ->when($request->search, fn($q) => $q->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%");
+            }))
+            ->when($request->verified, fn($q) => $q->where('is_youtube_verified', $request->verified === 'yes'))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.users.index', compact('users'));
+    }
+
+    // Route: users/{user}
+    public function show(User $user)
+    {
+        $user->load(['enrollments.course', 'orders.items.course', 'reviews.course']);
+
+        return view('admin.users.show', compact('user'));
+    }
+
+    public function edit(User $user)
+    {
+        return view('admin.users.edit', compact('user'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|min:8|confirmed',
+            'headline' => 'nullable|string|max:255',
+            'bio'      => 'nullable|string',
+        ]);
+
+        $data = $request->except(['password', 'password_confirmation', '_token', '_method']);
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', 'User berhasil diperbarui.');
+    }
+
+    public function destroy(User $user)
+    {
+        $user->delete();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', 'User berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\YoutubeVerificationController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/YoutubeVerificationController
+
+use App\Http\Controllers\Controller;
+use App\Models\YoutubeVerification;
+use Illuminate\Http\Request;
+
+class YoutubeVerificationController extends Controller
+{
+    public function index(Request $request)
+    {
+        $verifications = YoutubeVerification::with(['user', 'order.items.course'])
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->search, fn($q) => $q->whereHas('user', fn($q) =>
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%")
+            ))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $pendingCount = YoutubeVerification::where('status', 'pending')->count();
+
+        return view('admin.verifications.index', compact('verifications', 'pendingCount'));
+    }
+
+    // Route: verifications/{verification}
+    public function show(YoutubeVerification $verification)
+    {
+        $verification->load(['user', 'order.items.course', 'verifiedBy']);
+
+        return view('admin.verifications.show', compact('verification'));
+    }
+
+    // Route: verifications/{verification}/approve
+    public function approve(Request $request, YoutubeVerification $verification)
+    {
+        $request->validate([
+            'admin_note' => 'nullable|string|max:500',
+        ]);
+
+        // Simpan status sebelum proses
+        if ($verification->status !== 'pending') {
+            return back()->with('error', 'Verifikasi ini sudah diproses sebelumnya.');
+        }
+
+        $verification->approve(auth()->id(), $request->admin_note);
+
+        return back()->with('success', 'Verifikasi disetujui. Akses kursus sudah dibuka untuk user.');
+    }
+
+    // Route: verifications/{verification}/reject
+    public function reject(Request $request, YoutubeVerification $verification)
+    {
+        $request->validate([
+            'admin_note' => 'required|string|max:500',
+        ]);
+
+        if ($verification->status !== 'pending') {
+            return back()->with('error', 'Verifikasi ini sudah diproses sebelumnya.');
+        }
+
+        $verification->reject(auth()->id(), $request->admin_note);
+
+        return back()->with('success', 'Verifikasi ditolak. Notifikasi sudah dikirim ke user.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\Auth\ForgotPasswordController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
+
+class ForgotPasswordController extends Controller
+{
+  
+    public function index()
+    {
+        return view('admin.auth.forgot-password');
+    }
+ 
+    public function store(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+ 
+        $status = Password::sendResetLink($request->only('email'));
+ 
+        return $status === Password::RESET_LINK_SENT
+            ? back()->with('success', 'Link reset password sudah dikirim ke email kamu.')
+            : back()->withErrors(['email' => __($status)]);
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\Auth\LoginController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin\Auth;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class LoginController extends Controller
+{
+   public function index()
+    {
+        return view('admin.auth.login');
+    }
+ 
+    public function store(Request $request)
+    {
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|min:6',
+        ]);
+ 
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            return back()->withErrors(['email' => 'Email atau password salah.'])->withInput();
+        }
+ 
+        if (Auth::user()->role !== 'admin') {
+            Auth::logout();
+            return back()->withErrors(['email' => 'Akses ditolak. Kamu bukan admin.'])->withInput();
+        }
+ 
+        $request->session()->regenerate();
+ 
+        return redirect()->route('admin.dashboard')
+            ->with('success', 'Selamat datang, ' . Auth::user()->name . '!');
+    }
+ 
+    public function destroy(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+ 
+        return redirect()->route('admin.login')->with('success', 'Berhasil logout.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\Auth\ResetPasswordController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin\Auth;
+
+// php artisan make:controller Admin/Auth/ResetPasswordController
+
+use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
+class ResetPasswordController extends Controller
+{
+    public function index(string $token)
+    {
+        return view('admin.auth.reset-password', ['token' => $token]);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'token'                 => 'required',
+            'email'                 => 'required|email',
+            'password'              => 'required|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill(['password' => Hash::make($password)])
+                     ->setRememberToken(Str::random(60));
+                $user->save();
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('admin.login')->with('success', 'Password berhasil direset.')
+            : back()->withErrors(['email' => __($status)]);
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Auth\ForgotPasswordController.php =====
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+// php artisan make:controller Auth/ForgotPasswordController
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
+
+class ForgotPasswordController extends Controller
+{
+    // GET /auth/forgot-password
+    public function index()
+    {
+        return view('auth.forgot-password');
+    }
+
+    // POST /auth/forgot-password
+    public function store(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+            'email.email'    => 'Format email tidak valid.',
+        ]);
+
+        $status = Password::sendResetLink($request->only('email'));
+
+        return $status === Password::RESET_LINK_SENT
+            ? back()->with('success', 'Link reset password sudah dikirim ke email kamu. Cek inbox atau folder spam.')
+            : back()->withErrors(['email' => __($status)])->withInput();
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Auth\LoginController.php =====
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+// php artisan make:controller Auth/LoginController
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class LoginController extends Controller
+{
+    // GET /auth/login
+    public function index()
+    {
+        return view('auth.login');
+    }
+
+    // POST /auth/login
+    public function store(Request $request)
+    {
+        $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required',
+        ], [
+            'email.required'    => 'Email wajib diisi.',
+            'email.email'       => 'Format email tidak valid.',
+            'password.required' => 'Password wajib diisi.',
+        ]);
+
+        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            return back()
+                ->withErrors(['email' => 'Email atau password salah.'])
+                ->withInput($request->only('email'));
+        }
+
+        // Kalau ternyata admin, arahkan ke admin panel
+        if (Auth::user()->role === 'admin') {
+            $request->session()->regenerate();
+            return redirect()->route('admin.dashboard');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('user.dashboard'))
+            ->with('success', 'Selamat datang kembali, ' . Auth::user()->name . '!');
+    }
+
+    // POST /dashboard/logout
+    public function destroy(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('auth.login')
+            ->with('success', 'Berhasil logout. Sampai jumpa!');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Auth\RegisterController.php =====
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+// php artisan make:controller Auth/RegisterController
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+
+class RegisterController extends Controller
+{
+    // GET /auth/register
+    public function index()
+    {
+        return view('auth.register');
+    }
+
+    // POST /auth/register
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'                  => 'required|string|max:255',
+            'email'                 => 'required|email|unique:users,email',
+            'password'              => 'required|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ], [
+            'name.required'      => 'Nama wajib diisi.',
+            'email.required'     => 'Email wajib diisi.',
+            'email.email'        => 'Format email tidak valid.',
+            'email.unique'       => 'Email sudah terdaftar. Silakan login.',
+            'password.required'  => 'Password wajib diisi.',
+            'password.min'       => 'Password minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+        ]);
+
+        $user = User::create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
+            'role'     => 'user',
+        ]);
+
+        Auth::login($user);
+
+        return redirect()->route('user.dashboard')
+            ->with('success', 'Akun berhasil dibuat. Selamat datang, ' . $user->name . '!');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Auth\ResetPasswordController.php =====
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+// php artisan make:controller Auth/ResetPasswordController
+
+use App\Http\Controllers\Controller;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+
+class ResetPasswordController extends Controller
+{
+    // GET /auth/reset-password/{token}
+    public function index(string $token)
+    {
+        return view('auth.reset-password', ['token' => $token]);
+    }
+
+    // POST /auth/reset-password
+    public function store(Request $request)
+    {
+        $request->validate([
+            'token'                 => 'required',
+            'email'                 => 'required|email',
+            'password'              => 'required|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ], [
+            'email.required'     => 'Email wajib diisi.',
+            'password.required'  => 'Password wajib diisi.',
+            'password.min'       => 'Password minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password tidak cocok.',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->setRememberToken(Str::random(60));
+                $user->save();
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('auth.login')
+            ->with('success', 'Password berhasil direset! Silakan login dengan password baru.')
+            : back()->withErrors(['email' => __($status)])->withInput();
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\BlogController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/BlogController
+
+use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\BlogCategory;
+use Illuminate\Http\Request;
+
+class BlogController extends Controller
+{
+    public function index(Request $request)
+    {
+        $blogs = Blog::with(['category', 'user'])
+            ->withCount(['comments' => fn($q) => $q->where('status', true)])
+            ->where('status', true)
+            ->when(
+                $request->search,
+                fn($q) =>
+                $q->where('title', 'like', "%{$request->search}%")
+                    ->orWhere('description', 'like', "%{$request->search}%")
+            )
+            ->when(
+                $request->category,
+                fn($q) =>
+                $q->whereHas('category', fn($q) => $q->where('slug', $request->category))
+            )
+            ->latest()
+            ->paginate(9)
+            ->withQueryString();
+
+        $categories = BlogCategory::active()
+            ->withCount(['blogs' => fn($q) => $q->where('status', true)])
+            ->get();
+
+        // Blog populer (sidebar)
+        $popularBlogs = Blog::where('status', true)
+            ->withCount(['comments' => fn($q) => $q->where('status', true)])
+            ->orderByDesc('comments_count')
+            ->limit(5)
+            ->get();
+
+        return view('frontend.blog.index', compact('blogs', 'categories', 'popularBlogs'));
+    }
+
+    // Route: /blog/{slug}
+    public function show(string $slug)
+    {
+        $blog = Blog::with([
+            'category',
+            'user',
+            'comments' => fn($q) => $q->where('status', true)->with('user')->latest(),
+        ])
+            ->where('slug', $slug)
+            ->where('status', true)
+            ->firstOrFail();
+
+        // Blog terkait
+        $relatedBlogs = Blog::with('category')
+            ->where('status', true)
+            ->where('id', '!=', $blog->id)
+            ->where('blog_category_id', $blog->blog_category_id)
+            ->latest()
+            ->limit(3)
+            ->get();
+
+        // Blog lainnya (sidebar)
+        $recentBlogs = Blog::where('status', true)
+            ->where('id', '!=', $blog->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return view('frontend.blog.show', compact('blog', 'relatedBlogs', 'recentBlogs'));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\ContactController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/ContactController
+
+use App\Http\Controllers\Controller;
+use App\Models\Contact;
+use App\Models\Faq;
+use App\Models\Setting;
+use App\Models\SocialLink;
+use Illuminate\Http\Request;
+
+class ContactController extends Controller
+{
+    public function index()
+    {
+        $socialLinks = SocialLink::where('status', true)->orderBy('order')->get();
+
+        $faqs = Faq::where('status', true)->orderBy('order')->limit(6)->get();
+
+        $contactInfo = [
+            'email'   => Setting::get('site_email'),
+            'phone'   => Setting::get('site_phone'),
+            'address' => Setting::get('site_address'),
+        ];
+
+        return view('frontend.contact', compact('socialLinks', 'faqs', 'contactInfo'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'    => 'required|string|max:100',
+            'email'   => 'required|email|max:100',
+            'subject' => 'nullable|string|max:255',
+            'message' => 'required|string|max:2000',
+        ]);
+
+        Contact::create([
+            'name'    => $request->name,
+            'email'   => $request->email,
+            'subject' => $request->subject,
+            'message' => $request->message,
+        ]);
+
+        return back()->with('success', 'Pesan berhasil dikirim! Kami akan menghubungi kamu segera.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\CourseController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/CourseController
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseCategory;
+use App\Models\CourseLevel;
+use App\Models\Tag;
+use Illuminate\Http\Request;
+
+class CourseController extends Controller
+{
+    public function index(Request $request)
+    {
+        $courses = Course::with(['category', 'level'])
+            ->where('status', 'active')
+            ->withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
+            ->withAvg('reviews', 'rating')
+            ->when(
+                $request->search,
+                fn($q) =>
+                $q->where('title', 'like', "%{$request->search}%")
+                    ->orWhere('description', 'like', "%{$request->search}%")
+            )
+            ->when(
+                $request->category,
+                fn($q) =>
+                $q->whereHas('category', fn($q) => $q->where('slug', $request->category))
+            )
+            ->when(
+                $request->level,
+                fn($q) =>
+                $q->whereHas('level', fn($q) => $q->where('slug', $request->level))
+            )
+            ->when(
+                $request->tag,
+                fn($q) =>
+                $q->whereHas('tags', fn($q) => $q->where('slug', $request->tag))
+            )
+            ->when(
+                $request->sort === 'popular',
+                fn($q) =>
+                $q->orderByDesc('enrollments_count')
+            )
+            ->when(
+                $request->sort === 'rating',
+                fn($q) =>
+                $q->orderByDesc('reviews_avg_rating')
+            )
+            ->when(!$request->sort, fn($q) => $q->latest())
+            ->paginate(12)
+            ->withQueryString();
+
+        $categories = CourseCategory::active()
+            ->withCount(['courses' => fn($q) => $q->where('status', 'active')])
+            ->get();
+
+        $levels = CourseLevel::withCount(['courses' => fn($q) => $q->where('status', 'active')])->get();
+        $tags   = Tag::withCount(['courses' => fn($q) => $q->where('status', 'active')])->get();
+
+        return view('frontend.courses.index', compact('courses', 'categories', 'levels', 'tags'));
+    }
+
+    // Route: /courses/{slug}
+    public function show(string $slug)
+    {
+        $course = Course::with([
+            'category',
+            'level',
+            'tags',
+            'chapters' => fn($q) => $q->where('status', true)->orderBy('order'),
+            'chapters.lessons' => fn($q) => $q->where('status', true)->orderBy('order'),
+            'reviews.user',
+        ])
+            ->withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
+            ->withAvg('reviews', 'rating')
+            ->where('slug', $slug)
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        // Cek status user terhadap kursus ini
+        $isEnrolled   = auth()->check() && auth()->user()->isEnrolled($course->id);
+        $isInCart     = auth()->check() && auth()->user()->isInCart($course->id);
+        $isWishlisted = auth()->check() && auth()->user()->isWishlisted($course->id);
+
+        // Review user yang login
+        $userReview = null;
+        if (auth()->check()) {
+            $userReview = $course->reviews->firstWhere('user_id', auth()->id());
+        }
+
+        // Kursus terkait
+        $relatedCourses = Course::with(['category'])
+            ->where('status', 'active')
+            ->where('id', '!=', $course->id)
+            ->where('category_id', $course->category_id)
+            ->withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
+            ->withAvg('reviews', 'rating')
+            ->limit(4)
+            ->get();
+
+        // Total lesson & durasi
+        $totalLessons  = $course->chapters->flatMap->lessons->count();
+        $previewLessons = $course->chapters->flatMap->lessons->where('is_preview', true);
+
+        return view('frontend.courses.show', compact(
+            'course',
+            'isEnrolled',
+            'isInCart',
+            'isWishlisted',
+            'userReview',
+            'relatedCourses',
+            'totalLessons',
+            'previewLessons'
+        ));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\HomeController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/HomeController
+
+use App\Http\Controllers\Controller;
+use App\Models\Banner;
+use App\Models\Course;
+use App\Models\CourseCategory;
+use App\Models\Faq;
+use App\Models\Portfolio;
+use App\Models\Testimonial;
+
+class HomeController extends Controller
+{
+    public function index()
+    {
+        // Banner / Hero slider
+        $banners = Banner::where('status', true)
+            ->orderBy('order')
+            ->get();
+
+        // Kategori kursus
+        $categories = CourseCategory::active()
+            ->withCount(['courses' => fn($q) => $q->where('status', 'active')])
+            ->get();
+
+        // Kursus unggulan
+        $featuredCourses = Course::with(['category', 'level'])
+            ->where('status', 'active')
+            ->withCount(['enrollments' => fn($q) => $q->where('have_access', true)])
+            ->withAvg('reviews', 'rating')
+            ->latest()
+            ->limit(6)
+            ->get();
+
+        // Testimoni
+        $testimonials = Testimonial::where('status', true)
+            ->orderBy('order')
+            ->limit(6)
+            ->get();
+
+        // FAQ
+        $faqs = Faq::where('status', true)
+            ->orderBy('order')
+            ->limit(8)
+            ->get();
+
+        // Portfolio terbaru
+        $portfolios = Portfolio::where('status', true)
+            ->orderBy('order')
+            ->limit(6)
+            ->get();
+
+        // Stats
+        $stats = [
+            'total_courses'     => Course::where('status', 'active')->count(),
+            'total_enrollments' => \App\Models\Enrollment::where('have_access', true)->count(),
+            'total_categories'  => CourseCategory::active()->count(),
+        ];
+
+        return view('frontend.home', compact(
+            'banners',
+            'categories',
+            'featuredCourses',
+            'testimonials',
+            'faqs',
+            'portfolios',
+            'stats'
+        ));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\NewsletterController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/NewsletterController
+
+use App\Http\Controllers\Controller;
+use App\Models\Newsletter;
+use Illuminate\Http\Request;
+
+class NewsletterController extends Controller
+{
+    public function subscribe(Request $request)
+    {
+        $request->validate(['email' => 'required|email|max:100']);
+
+        Newsletter::firstOrCreate(
+            ['email' => $request->email],
+            ['is_active' => true]
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Berhasil subscribe newsletter! Terima kasih.',
+            ]);
+        }
+
+        return back()->with('success', 'Berhasil subscribe newsletter! Terima kasih.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\PortfolioController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/PortfolioController
+
+use App\Http\Controllers\Controller;
+use App\Models\Portfolio;
+use Illuminate\Http\Request;
+
+class PortfolioController extends Controller
+{
+    public function index(Request $request)
+    {
+        $portfolios = Portfolio::where('status', true)
+            ->when($request->type, fn($q) => $q->where('type', $request->type))
+            ->orderBy('order')
+            ->get();
+
+        $types = Portfolio::where('status', true)
+            ->select('type')
+            ->distinct()
+            ->pluck('type');
+
+        return view('frontend.portfolio', compact('portfolios', 'types'));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\BlogCommentController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/BlogCommentController
+
+use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\BlogComment;
+use Illuminate\Http\Request;
+
+class BlogCommentController extends Controller
+{
+    // POST /dashboard/blog/{blog}/comments
+    public function store(Request $request, Blog $blog)
+    {
+        $request->validate([
+            'comment' => 'required|string|min:5|max:1000',
+        ], [
+            'comment.required' => 'Komentar wajib diisi.',
+            'comment.min'      => 'Komentar minimal 5 karakter.',
+        ]);
+
+        BlogComment::create([
+            'user_id' => auth()->id(),
+            'blog_id' => $blog->id,
+            'comment' => $request->comment,
+            'status'  => true,
+        ]);
+
+        return back()->with('success', 'Komentar berhasil dikirim.');
+    }
+
+    // DELETE /dashboard/blog/comments/{comment}
+    public function destroy(BlogComment $comment)
+    {
+        if ($comment->user_id !== auth()->id()) {
+            abort(403, 'Kamu tidak berhak menghapus komentar ini.');
+        }
+
+        $comment->delete();
+
+        return back()->with('success', 'Komentar berhasil dihapus.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\CartController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/CartController
+
+use App\Http\Controllers\Controller;
+use App\Models\Cart;
+use App\Models\Course;
+
+class CartController extends Controller
+{
+    // GET /dashboard/cart
+    public function index()
+    {
+        $carts = Cart::with(['course.category', 'course.level'])
+            ->where('user_id', auth()->id())
+            ->get();
+
+        return view('user.cart', compact('carts'));
+    }
+
+    // POST /dashboard/cart/add/{course}
+    public function store(Course $course)
+    {
+        $user = auth()->user();
+
+        if ($user->isEnrolled($course->id)) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Kamu sudah memiliki akses ke kursus ini.'], 422);
+            }
+            return back()->with('error', 'Kamu sudah memiliki akses ke kursus ini.');
+        }
+
+        if ($user->isInCart($course->id)) {
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Kursus sudah ada di keranjang.'], 422);
+            }
+            return back()->with('error', 'Kursus sudah ada di keranjang.');
+        }
+
+        Cart::create(['user_id' => $user->id, 'course_id' => $course->id]);
+
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Kursus ditambahkan ke keranjang.']);
+        }
+
+        return back()->with('success', 'Kursus berhasil ditambahkan ke keranjang!');
+    }
+
+    // DELETE /dashboard/cart/{cart}
+    public function destroy(Cart $cart)
+    {
+        if ($cart->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $cart->delete();
+
+        return back()->with('success', 'Kursus dihapus dari keranjang.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\CertificateController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/CertificateController
+
+use App\Http\Controllers\Controller;
+use App\Models\Certificate;
+use App\Models\Course;
+use App\Models\LessonProgress;
+
+class CertificateController extends Controller
+{
+    // GET /dashboard/certificates
+    public function index()
+    {
+        $certificates = Certificate::with('course.category')
+            ->where('user_id', auth()->id())
+            ->latest('issued_at')
+            ->get();
+
+        return view('user.certificates', compact('certificates'));
+    }
+
+    // GET /dashboard/learn/{course}/certificate
+    public function show(Course $course)
+    {
+        $user = auth()->user();
+
+        // Pastikan user enroll
+        if (! $user->isEnrolled($course->id)) {
+            abort(403, 'Kamu belum enroll kursus ini.');
+        }
+
+        $totalLessons = $course->chapters()
+            ->where('status', true)
+            ->with(['lessons' => fn($q) => $q->where('status', true)])
+            ->get()
+            ->flatMap->lessons
+            ->count();
+
+        $completedLessons = LessonProgress::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->where('is_completed', true)
+            ->count();
+
+        if ($totalLessons === 0 || $completedLessons < $totalLessons) {
+            return back()->with('error', 'Selesaikan semua materi terlebih dahulu untuk mendapatkan sertifikat. (' . $completedLessons . '/' . $totalLessons . ' lesson selesai)');
+        }
+
+        // Buat atau ambil sertifikat
+        $certificate = Certificate::firstOrCreate(
+            ['user_id' => $user->id, 'course_id' => $course->id],
+            [
+                'certificate_number' => Certificate::generateNumber(),
+                'issued_at'          => now(),
+            ]
+        );
+
+        return view('user.certificate-show', compact('certificate', 'course'));
+    }
+
+    // GET /dashboard/learn/{course}/certificate/download
+    public function download(Course $course)
+    {
+        $certificate = Certificate::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->firstOrFail();
+
+        // TODO: Generate PDF sertifikat
+        // Untuk sementara redirect ke halaman view
+        return redirect()->route('user.learn.certificate', $course)
+            ->with('info', 'Fitur download sertifikat PDF segera hadir!');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\CheckoutController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/CheckoutController
+
+use App\Http\Controllers\Controller;
+use App\Models\Cart;
+use App\Models\Order;
+use App\Models\OrderItem;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class CheckoutController extends Controller
+{
+    // GET /dashboard/checkout/{order}
+    public function show(Order $order)
+    {
+        if ($order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $order->load(['items.course', 'youtubeVerification']);
+
+        $youtubeSetting = \App\Models\Setting::get('youtube_channel_url');
+
+        return view('user.checkout', compact('order', 'youtubeSetting'));
+    }
+
+    // POST /dashboard/checkout
+    public function store(Request $request)
+    {
+        $user  = auth()->user();
+        $carts = Cart::with('course')
+            ->where('user_id', $user->id)
+            ->get();
+
+        if ($carts->isEmpty()) {
+            return back()->with('error', 'Keranjang kamu kosong. Tambahkan kursus terlebih dahulu.');
+        }
+
+        // Cek kalau ada kursus yang sudah dienroll
+        foreach ($carts as $cart) {
+            if ($user->isEnrolled($cart->course_id)) {
+                return back()->with('error', 'Kamu sudah memiliki akses ke kursus "' . $cart->course->title . '".');
+            }
+        }
+
+        // Buat order
+        $order = Order::create([
+            'invoice_id' => Order::generateInvoiceId(),
+            'user_id'    => $user->id,
+            'status'     => 'pending',
+        ]);
+
+        // Buat order items dari cart
+        foreach ($carts as $cart) {
+            OrderItem::create([
+                'order_id'     => $order->id,
+                'course_id'    => $cart->course_id,
+                'course_title' => $cart->course->title,
+            ]);
+        }
+
+        // Kosongkan cart
+        Cart::where('user_id', $user->id)->delete();
+
+        return redirect()->route('user.checkout.show', $order)
+            ->with('success', 'Order berhasil dibuat! Silakan lanjutkan verifikasi subscribe YouTube.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\DashboardController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/DashboardController
+
+use App\Http\Controllers\Controller;
+use App\Models\Enrollment;
+use App\Models\Notification;
+use App\Models\Order;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $user = auth()->user();
+
+        // Enrollment aktif terbaru
+        $enrollments = Enrollment::with(['course.category'])
+            ->where('user_id', $user->id)
+            ->where('have_access', true)
+            ->latest()
+            ->limit(4)
+            ->get();
+
+        // Order yang belum selesai (pending / waiting_verification)
+        $pendingOrders = Order::with(['items.course', 'youtubeVerification'])
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'waiting_verification'])
+            ->latest()
+            ->get();
+
+        // Notifikasi belum dibaca
+        $unreadNotifications = Notification::where('user_id', $user->id)
+            ->where('is_read', false)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        // Stats
+        $stats = [
+            'total_courses'    => Enrollment::where('user_id', $user->id)->where('have_access', true)->count(),
+            'total_orders'     => Order::where('user_id', $user->id)->count(),
+            'unread_notif'     => Notification::where('user_id', $user->id)->where('is_read', false)->count(),
+            'total_cert'       => \App\Models\Certificate::where('user_id', $user->id)->count(),
+        ];
+
+        return view('user.dashboard', compact(
+            'enrollments',
+            'pendingOrders',
+            'unreadNotifications',
+            'stats'
+        ));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\DiscussionController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/DiscussionController
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\DiscussionThread;
+use Illuminate\Http\Request;
+
+class DiscussionController extends Controller
+{
+    // POST /dashboard/courses/{course}/discussions
+    public function store(Request $request, Course $course)
+    {
+        $request->validate([
+            'title'     => 'required|string|max:255',
+            'body'      => 'required|string|min:10|max:2000',
+            'lesson_id' => 'nullable|exists:course_lessons,id',
+        ], [
+            'title.required' => 'Judul pertanyaan wajib diisi.',
+            'body.required'  => 'Isi pertanyaan wajib diisi.',
+            'body.min'       => 'Pertanyaan minimal 10 karakter.',
+        ]);
+
+        DiscussionThread::create([
+            'user_id'   => auth()->id(),
+            'course_id' => $course->id,
+            'lesson_id' => $request->lesson_id,
+            'title'     => $request->title,
+            'body'      => $request->body,
+        ]);
+
+        return back()->with('success', 'Pertanyaan berhasil dikirim.');
+    }
+
+    // DELETE /dashboard/discussions/{thread}
+    public function destroy(DiscussionThread $thread)
+    {
+        if ($thread->user_id !== auth()->id()) {
+            abort(403, 'Kamu tidak berhak menghapus diskusi ini.');
+        }
+
+        $thread->delete();
+
+        return back()->with('success', 'Diskusi berhasil dihapus.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\DiscussionReplyController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/DiscussionReplyController
+
+use App\Http\Controllers\Controller;
+use App\Models\DiscussionReply;
+use App\Models\DiscussionThread;
+use Illuminate\Http\Request;
+
+class DiscussionReplyController extends Controller
+{
+    // POST /dashboard/discussions/{thread}/replies
+    public function store(Request $request, DiscussionThread $thread)
+    {
+        $request->validate([
+            'body' => 'required|string|min:5|max:2000',
+        ], [
+            'body.required' => 'Balasan wajib diisi.',
+            'body.min'      => 'Balasan minimal 5 karakter.',
+        ]);
+
+        DiscussionReply::create([
+            'user_id'   => auth()->id(),
+            'thread_id' => $thread->id,
+            'body'      => $request->body,
+        ]);
+
+        return back()->with('success', 'Balasan berhasil dikirim.');
+    }
+
+    // POST /dashboard/discussions/replies/{reply}/answer
+    public function markAnswer(DiscussionReply $reply)
+    {
+        $thread = $reply->thread;
+
+        // Hanya pembuat thread yang bisa tandai jawaban terbaik
+        if ($thread->user_id !== auth()->id()) {
+            abort(403, 'Hanya pembuat pertanyaan yang bisa menandai jawaban terbaik.');
+        }
+
+        $reply->markAsAnswer();
+
+        return back()->with('success', 'Jawaban terbaik berhasil dipilih!');
+    }
+
+    // DELETE /dashboard/discussions/replies/{reply}
+    public function destroy(DiscussionReply $reply)
+    {
+        if ($reply->user_id !== auth()->id()) {
+            abort(403, 'Kamu tidak berhak menghapus balasan ini.');
+        }
+
+        $reply->delete();
+
+        return back()->with('success', 'Balasan berhasil dihapus.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\EnrollmentController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/EnrollmentController
+
+use App\Http\Controllers\Controller;
+use App\Models\Enrollment;
+use App\Models\LessonProgress;
+
+class EnrollmentController extends Controller
+{
+    // GET /dashboard/my-courses
+    public function index()
+    {
+        $enrollments = Enrollment::with(['course.category', 'course.chapters.lessons'])
+            ->where('user_id', auth()->id())
+            ->where('have_access', true)
+            ->latest()
+            ->paginate(12);
+
+        // Hitung progress tiap kursus
+        $progressData = [];
+        foreach ($enrollments as $enrollment) {
+            $totalLessons = $enrollment->course->chapters
+                ->flatMap->lessons
+                ->where('status', true)
+                ->count();
+
+            $completedLessons = LessonProgress::where('user_id', auth()->id())
+                ->where('course_id', $enrollment->course_id)
+                ->where('is_completed', true)
+                ->count();
+
+            $progressData[$enrollment->course_id] = $totalLessons > 0
+                ? round(($completedLessons / $totalLessons) * 100)
+                : 0;
+        }
+
+        return view('user.my-courses', compact('enrollments', 'progressData'));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\LearnController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/LearnController
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\CourseLesson;
+use App\Models\LessonProgress;
+use Illuminate\Http\Request;
+
+class LearnController extends Controller
+{
+    // GET /dashboard/learn/{course}
+    // Redirect ke lesson pertama yang belum selesai
+    public function index(Course $course)
+    {
+        $course->load([
+            'chapters' => fn($q) => $q->where('status', true)->orderBy('order'),
+            'chapters.lessons' => fn($q) => $q->where('status', true)->orderBy('order'),
+        ]);
+
+        // Ambil semua progress user untuk kursus ini
+        $progress = LessonProgress::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->pluck('is_completed', 'lesson_id');
+
+        // Cari lesson pertama yang belum selesai
+        $allLessons = $course->chapters->flatMap->lessons;
+        $firstLesson = $allLessons->first(fn($l) => ! ($progress[$l->id] ?? false))
+            ?? $allLessons->first();
+
+        if ($firstLesson) {
+            return redirect()->route('user.learn.show', [$course, $firstLesson]);
+        }
+
+        // Kalau tidak ada lesson sama sekali
+        return view('user.learn.index', compact('course', 'progress'));
+    }
+
+    // GET /dashboard/learn/{course}/{lesson}
+    public function show(Course $course, CourseLesson $lesson)
+    {
+        // Pastikan lesson milik kursus ini
+        if ($lesson->course_id !== $course->id) {
+            abort(404);
+        }
+
+        $course->load([
+            'chapters' => fn($q) => $q->where('status', true)->orderBy('order'),
+            'chapters.lessons' => fn($q) => $q->where('status', true)->orderBy('order'),
+        ]);
+
+        // Progress semua lesson
+        $progress = LessonProgress::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->pluck('is_completed', 'lesson_id');
+
+        // Tandai lesson ini sudah dibuka (buat record progress jika belum ada)
+        LessonProgress::firstOrCreate([
+            'user_id'   => auth()->id(),
+            'course_id' => $course->id,
+            'lesson_id' => $lesson->id,
+        ]);
+
+        // Navigasi prev/next lesson
+        $allLessons = $course->chapters->flatMap->lessons->values();
+        $currentIdx = $allLessons->search(fn($l) => $l->id === $lesson->id);
+        $prevLesson = $currentIdx > 0 ? $allLessons[$currentIdx - 1] : null;
+        $nextLesson = $currentIdx < $allLessons->count() - 1 ? $allLessons[$currentIdx + 1] : null;
+
+        // Cek apakah sudah bisa dapat sertifikat
+        $totalLessons     = $allLessons->count();
+        $completedLessons = collect($progress)->filter()->count();
+        $canGetCert       = $totalLessons > 0 && $completedLessons >= $totalLessons;
+
+        // Diskusi lesson ini
+        $discussions = \App\Models\DiscussionThread::with(['user', 'replies.user'])
+            ->where('course_id', $course->id)
+            ->where('lesson_id', $lesson->id)
+            ->withCount('replies')
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        return view('user.learn.show', compact(
+            'course',
+            'lesson',
+            'progress',
+            'prevLesson',
+            'nextLesson',
+            'canGetCert',
+            'discussions'
+        ));
+    }
+
+    // POST /dashboard/learn/{course}/{lesson}/progress
+    public function updateProgress(Request $request, Course $course, CourseLesson $lesson)
+    {
+        $request->validate([
+            'is_completed'    => 'boolean',
+            'watched_seconds' => 'nullable|integer|min:0',
+        ]);
+
+        $lessonProgress = LessonProgress::firstOrCreate([
+            'user_id'   => auth()->id(),
+            'course_id' => $course->id,
+            'lesson_id' => $lesson->id,
+        ]);
+
+        $lessonProgress->update([
+            'is_completed'    => $request->boolean('is_completed', false),
+            'watched_seconds' => $request->watched_seconds ?? $lessonProgress->watched_seconds,
+        ]);
+
+        // Hitung total progress
+        $totalLessons = $course->chapters()
+            ->where('status', true)
+            ->with(['lessons' => fn($q) => $q->where('status', true)])
+            ->get()
+            ->flatMap->lessons
+            ->count();
+
+        $completedCount = LessonProgress::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->where('is_completed', true)
+            ->count();
+
+        $percentage = $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100) : 0;
+
+        return response()->json([
+            'success'    => true,
+            'percentage' => $percentage,
+            'completed'  => $completedCount,
+            'total'      => $totalLessons,
+        ]);
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\NotificationController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/NotificationController
+
+use App\Http\Controllers\Controller;
+use App\Models\Notification;
+
+class NotificationController extends Controller
+{
+    // GET /dashboard/notifications
+    public function index()
+    {
+        $notifications = Notification::where('user_id', auth()->id())
+            ->latest()
+            ->paginate(20);
+
+        // Tandai semua sebagai dibaca saat halaman dibuka
+        Notification::where('user_id', auth()->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return view('user.notifications', compact('notifications'));
+    }
+
+    // POST /dashboard/notifications/{notification}/read
+    public function markRead(Notification $notification)
+    {
+        if ($notification->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $notification->update(['is_read' => true]);
+
+        if ($notification->url) {
+            return redirect($notification->url);
+        }
+
+        return back();
+    }
+
+    // POST /dashboard/notifications/read-all
+    public function readAll()
+    {
+        Notification::where('user_id', auth()->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return back()->with('success', 'Semua notifikasi ditandai sudah dibaca.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\ProfileController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/ProfileController
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+class ProfileController extends Controller
+{
+    // GET /dashboard/profile
+    public function index()
+    {
+        $user = auth()->user();
+        return view('user.profile', compact('user'));
+    }
+
+    // PUT /dashboard/profile
+    public function update(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'name'      => 'required|string|max:255',
+            'email'     => 'required|email|unique:users,email,' . $user->id,
+            'headline'  => 'nullable|string|max:255',
+            'bio'       => 'nullable|string|max:1000',
+            'gender'    => 'nullable|in:male,female',
+            'github'    => 'nullable|url|max:255',
+            'linkedin'  => 'nullable|url|max:255',
+            'instagram' => 'nullable|url|max:255',
+            'facebook'  => 'nullable|url|max:255',
+            'x'         => 'nullable|url|max:255',
+            'website'   => 'nullable|url|max:255',
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:1024',
+        ], [
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.unique'  => 'Email sudah digunakan akun lain.',
+        ]);
+
+        $data = $request->except(['image', '_token', '_method']);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('avatars', 'public');
+        }
+
+        $user->update($data);
+
+        return back()->with('success', 'Profil berhasil diperbarui.');
+    }
+
+    // PUT /dashboard/profile/password
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password'      => 'required',
+            'password'              => 'required|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ], [
+            'current_password.required' => 'Password saat ini wajib diisi.',
+            'password.required'         => 'Password baru wajib diisi.',
+            'password.min'              => 'Password minimal 8 karakter.',
+            'password.confirmed'        => 'Konfirmasi password tidak cocok.',
+        ]);
+
+        $user = auth()->user();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors([
+                'current_password' => 'Password saat ini tidak sesuai.',
+            ]);
+        }
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        return back()->with('success', 'Password berhasil diubah.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\ReviewController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/ReviewController
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\Review;
+use Illuminate\Http\Request;
+
+class ReviewController extends Controller
+{
+    // POST /dashboard/courses/{course}/review
+    public function store(Request $request, Course $course)
+    {
+        $user = auth()->user();
+
+        if (! $user->isEnrolled($course->id)) {
+            return back()->with('error', 'Kamu harus enroll kursus ini untuk bisa memberikan review.');
+        }
+
+        if (Review::where('user_id', $user->id)->where('course_id', $course->id)->exists()) {
+            return back()->with('error', 'Kamu sudah pernah memberikan review untuk kursus ini.');
+        }
+
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'required|string|min:10|max:1000',
+        ], [
+            'rating.required' => 'Rating wajib dipilih.',
+            'rating.min'      => 'Rating minimal 1 bintang.',
+            'rating.max'      => 'Rating maksimal 5 bintang.',
+            'review.required' => 'Review wajib diisi.',
+            'review.min'      => 'Review minimal 10 karakter.',
+        ]);
+
+        Review::create([
+            'user_id'   => $user->id,
+            'course_id' => $course->id,
+            'rating'    => $request->rating,
+            'review'    => $request->review,
+            'status'    => true,
+        ]);
+
+        return back()->with('success', 'Review berhasil dikirim. Terima kasih!');
+    }
+
+    // PUT /dashboard/courses/{course}/review
+    public function update(Request $request, Course $course)
+    {
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'required|string|min:10|max:1000',
+        ]);
+
+        $review = Review::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->firstOrFail();
+
+        $review->update([
+            'rating' => $request->rating,
+            'review' => $request->review,
+        ]);
+
+        return back()->with('success', 'Review berhasil diperbarui.');
+    }
+
+    // DELETE /dashboard/courses/{course}/review
+    public function destroy(Course $course)
+    {
+        Review::where('user_id', auth()->id())
+            ->where('course_id', $course->id)
+            ->delete();
+
+        return back()->with('success', 'Review berhasil dihapus.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\WishlistController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/WishlistController
+
+use App\Http\Controllers\Controller;
+use App\Models\Course;
+use App\Models\Wishlist;
+
+class WishlistController extends Controller
+{
+    // GET /dashboard/wishlist
+    public function index()
+    {
+        $wishlists = Wishlist::with(['course.category', 'course.level'])
+            ->where('user_id', auth()->id())
+            ->latest()
+            ->paginate(12);
+
+        return view('user.wishlist', compact('wishlists'));
+    }
+
+    // POST /dashboard/wishlist/toggle/{course}
+    public function toggle(Course $course)
+    {
+        $user     = auth()->user();
+        $wishlist = Wishlist::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->first();
+
+        if ($wishlist) {
+            $wishlist->delete();
+            $added   = false;
+            $message = 'Kursus dihapus dari wishlist.';
+        } else {
+            Wishlist::create(['user_id' => $user->id, 'course_id' => $course->id]);
+            $added   = true;
+            $message = 'Kursus ditambahkan ke wishlist.';
+        }
+
+        if (request()->expectsJson()) {
+            return response()->json(['success' => true, 'added' => $added, 'message' => $message]);
+        }
+
+        return back()->with('success', $message);
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\YoutubeVerificationController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/YoutubeVerificationController
+
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Models\Setting;
+use App\Models\YoutubeVerification;
+use Illuminate\Http\Request;
+
+class YoutubeVerificationController extends Controller
+{
+    // GET /dashboard/verification/{order}/status
+    public function status(Order $order)
+    {
+        if ($order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $order->load(['items.course', 'youtubeVerification']);
+
+        $youtubeChannelUrl  = Setting::get('youtube_channel_url');
+        $youtubeChannelName = Setting::get('youtube_channel_name');
+
+        return view('user.verification-status', compact(
+            'order',
+            'youtubeChannelUrl',
+            'youtubeChannelName'
+        ));
+    }
+
+    // POST /dashboard/verification/{order}/submit
+    public function submit(Request $request, Order $order)
+    {
+        if ($order->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($order->status !== 'pending') {
+            return back()->with('error', 'Order ini sudah diproses sebelumnya.');
+        }
+
+        // Cek apakah sudah ada verifikasi pending
+        if ($order->youtubeVerification && $order->youtubeVerification->status === 'pending') {
+            return back()->with('error', 'Kamu sudah mengirim bukti verifikasi. Tunggu review dari admin.');
+        }
+
+        $request->validate([
+            'youtube_channel_name' => 'required|string|max:255',
+            'youtube_channel_url'  => 'required|url|max:255',
+            'proof_image'          => 'required|image|mimes:jpg,jpeg,png,webp|max:3072',
+        ], [
+            'youtube_channel_name.required' => 'Nama channel YouTube wajib diisi.',
+            'youtube_channel_url.required'  => 'URL channel YouTube wajib diisi.',
+            'youtube_channel_url.url'       => 'URL channel YouTube tidak valid.',
+            'proof_image.required'          => 'Screenshot bukti subscribe wajib diupload.',
+            'proof_image.image'             => 'File harus berupa gambar.',
+            'proof_image.max'               => 'Ukuran gambar maksimal 3MB.',
+        ]);
+
+        $proofImage = $request->file('proof_image')->store('verifications', 'public');
+
+        YoutubeVerification::create([
+            'user_id'              => auth()->id(),
+            'order_id'             => $order->id,
+            'youtube_channel_name' => $request->youtube_channel_name,
+            'youtube_channel_url'  => $request->youtube_channel_url,
+            'proof_image'          => $proofImage,
+            'status'               => 'pending',
+        ]);
+
+        $order->update(['status' => 'waiting_verification']);
+
+        return redirect()->route('user.verification.status', $order)
+            ->with('success', 'Bukti verifikasi berhasil dikirim! Admin akan mereview dalam 1x24 jam.');
+    }
+}
+

@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Frontend;
 
-// php artisan make:controller Frontend/BlogController
-
 use App\Http\Controllers\Controller;
 use App\Models\Blog;
 use App\Models\BlogCategory;
@@ -18,14 +16,14 @@ class BlogController extends Controller
             ->where('status', true)
             ->when(
                 $request->search,
-                fn($q) =>
-                $q->where('title', 'like', "%{$request->search}%")
-                    ->orWhere('description', 'like', "%{$request->search}%")
+            fn($q) => $q->where(function ($w) use ($request) {
+                $w->where('title', 'like', "%{$request->search}%")
+                    ->orWhere('description', 'like', "%{$request->search}%");
+            })
             )
             ->when(
                 $request->category,
-                fn($q) =>
-                $q->whereHas('category', fn($q) => $q->where('slug', $request->category))
+            fn($q) => $q->whereHas('category', fn($q) => $q->where('slug', $request->category))
             )
             ->latest()
             ->paginate(9)
@@ -51,6 +49,7 @@ class BlogController extends Controller
         $blog = Blog::with([
             'category',
             'user',
+            'blocks',
             'comments' => fn($q) => $q->where('status', true)->with('user')->latest(),
         ])
             ->where('slug', $slug)

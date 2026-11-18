@@ -48,10 +48,28 @@
                             style="width:100%;border-radius:20px;margin-bottom:2rem;max-height:400px;object-fit:cover;border:1px solid rgba(244,196,48,0.1);">
                     @endif
 
-                    {{-- Konten --}}
-                    <div
-                        style="font-size:0.95rem;color:var(--text-secondary);line-height:1.9;white-space:pre-line;margin-bottom:3rem;">
-                        {{ $blog->description }}
+                    {{-- Konten (blok teks & gambar berurutan) --}}
+                    <div style="margin-bottom:3rem;">
+                        @forelse($blog->blocks as $block)
+                            @if ($block->type === 'text')
+                                <div
+                                    style="font-size:0.95rem;color:var(--text-secondary);line-height:1.9;white-space:pre-line;margin-bottom:1.5rem;">{{ $block->content }}</div>
+                            @else
+                                <figure style="margin:0 0 2rem;">
+                                    <img src="{{ asset('storage/' . $block->image) }}" alt="{{ $block->caption ?? $blog->title }}"
+                                        loading="lazy"
+                                        style="width:100%;height:auto;border-radius:16px;border:1px solid rgba(244,196,48,0.1);">
+                                    @if ($block->caption)
+                                        <figcaption
+                                            style="font-size:0.8rem;color:var(--text-secondary);text-align:center;margin-top:0.6rem;">
+                                            {{ $block->caption }}</figcaption>
+                                    @endif
+                                </figure>
+                            @endif
+                        @empty
+                            <div
+                                style="font-size:0.95rem;color:var(--text-secondary);line-height:1.9;white-space:pre-line;">{{ $blog->description }}</div>
+                        @endforelse
                     </div>
 
                     {{-- Komentar --}}
@@ -149,7 +167,7 @@
                                             <img src="{{ asset('storage/' . $related->image) }}"
                                                 style="width:100%;height:100%;object-fit:cover;">
                                         @else
-                                            <span style="font-size:1.5rem;">📝</span>
+                                            <span style="font-size:1.5rem;">ðŸ“</span>
                                         @endif
                                     </div>
                                     <div>

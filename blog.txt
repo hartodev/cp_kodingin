@@ -1,0 +1,2167 @@
+﻿
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BlogCategoryController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BlogCategoryController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\BlogCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class BlogCategoryController extends Controller
+{
+    public function index()
+    {
+        $categories = BlogCategory::withCount('blogs')->latest()->paginate(15);
+
+        return view('admin.blog-categories.index', compact('categories'));
+    }
+
+    public function create()
+    {
+        return view('admin.blog-categories.create');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100|unique:blog_categories,name',
+            'status' => 'boolean',
+        ]);
+
+        BlogCategory::create([
+            'name'   => $request->name,
+            'slug'   => Str::slug($request->name),
+            'status' => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.blog-categories.index')
+            ->with('success', 'Kategori blog berhasil ditambahkan.');
+    }
+
+    // Route: blog-categories/{blog_category}
+    public function edit(BlogCategory $blogCategory)
+    {
+        return view('admin.blog-categories.edit', compact('blogCategory'));
+    }
+
+    public function update(Request $request, BlogCategory $blogCategory)
+    {
+        $request->validate([
+            'name'   => 'required|string|max:100|unique:blog_categories,name,' . $blogCategory->id,
+            'status' => 'boolean',
+        ]);
+
+        $blogCategory->update([
+            'name'   => $request->name,
+            'slug'   => Str::slug($request->name),
+            'status' => $request->boolean('status', true),
+        ]);
+
+        return redirect()->route('admin.blog-categories.index')
+            ->with('success', 'Kategori blog berhasil diperbarui.');
+    }
+
+    public function destroy(BlogCategory $blogCategory)
+    {
+        $blogCategory->delete();
+
+        return redirect()->route('admin.blog-categories.index')
+            ->with('success', 'Kategori blog berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BlogCommentController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BlogCommentController
+
+use App\Http\Controllers\Controller;
+use App\Models\BlogComment;
+use Illuminate\Http\Request;
+
+class BlogCommentController extends Controller
+{
+    public function index(Request $request)
+    {
+        $comments = BlogComment::with(['user', 'blog'])
+            ->when($request->search, fn($q) => $q->where('comment', 'like', "%{$request->search}%"))
+
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status)) // â† fix: pakai has() bukan isset()
+
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.blog-comments.index', compact('comments'));
+    }
+
+    // Route: blog-comments/{comment} â† parameter harus $comment
+    public function destroy(BlogComment $comment)
+    {
+        $comment->delete();
+
+        return back()->with('success', 'Komentar berhasil dihapus.');
+    }
+
+    // Route: blog-comments/{comment}/toggle â† parameter harus $comment
+    public function toggle(BlogComment $blogComment)
+    {
+
+        // â”€â”€ Fix: simpan nilai BARU dulu sebelum update â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        $newStatus = ! $blogComment->status;
+
+        $blogComment->update(['status' => $newStatus]);
+
+        // â† pakai $newStatus, bukan $blogComment->status (sudah berubah setelah update)
+
+        $newStatus = ! $blogComment->status;
+
+        $blogComment->update(['status' => $newStatus]);
+
+        $label = $newStatus ? 'ditampilkan' : 'disembunyikan';
+
+        return back()->with('success', "Komentar berhasil {$label}.");
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Admin\BlogController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+// php artisan make:controller Admin/BlogController --resource
+
+use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\BlogCategory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class BlogController extends Controller
+{
+    public function index(Request $request)
+    {
+        $blogs = Blog::with(['category', 'user'])
+            ->withCount('comments')
+            ->when($request->search, fn($q) => $q->where('title', 'like', "%{$request->search}%"))
+            ->when($request->category, fn($q) => $q->where('blog_category_id', $request->category))
+            ->when($request->has('status'), fn($q) => $q->where('status', $request->status))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $categories = BlogCategory::active()->get();
+
+        return view('admin.blogs.index', compact('blogs', 'categories'));
+    }
+
+    public function create()
+    {
+        $categories = BlogCategory::active()->get();
+
+        return view('admin.blogs.create', compact('categories'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title'            => 'required|string|max:255',
+            'blog_category_id' => 'required|exists:blog_categories,id',
+            'description'      => 'required|string',
+            'seo_description'  => 'nullable|string|max:255',
+            'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'           => 'boolean',
+        ]);
+
+        $data            = $request->except(['image', '_token']);
+        $data['slug']    = Str::slug($request->title);
+        $data['user_id'] = auth()->id();
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('blogs', 'public');
+        }
+
+        Blog::create($data);
+
+        return redirect()->route('admin.blogs.index')
+            ->with('success', 'Blog berhasil dipublikasikan.');
+    }
+
+    // Route: blogs/{blog}
+    public function show(Blog $blog)
+    {
+        $blog->load(['category', 'comments.user']);
+
+        return view('admin.blogs.show', compact('blog'));
+    }
+
+    public function edit(Blog $blog)
+    {
+        $categories = BlogCategory::active()->get();
+
+        return view('admin.blogs.edit', compact('blog', 'categories'));
+    }
+
+    public function update(Request $request, Blog $blog)
+    {
+        $request->validate([
+            'title'            => 'required|string|max:255',
+            'blog_category_id' => 'required|exists:blog_categories,id',
+            'description'      => 'required|string',
+            'seo_description'  => 'nullable|string|max:255',
+            'image'            => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'status'           => 'boolean',
+        ]);
+
+        $data         = $request->except(['image', '_token', '_method']);
+        $data['slug'] = Str::slug($request->title);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('blogs', 'public');
+        }
+
+        $blog->update($data);
+
+        return redirect()->route('admin.blogs.index')
+            ->with('success', 'Blog berhasil diperbarui.');
+    }
+
+    public function destroy(Blog $blog)
+    {
+        $blog->delete();
+
+        return redirect()->route('admin.blogs.index')
+            ->with('success', 'Blog berhasil dihapus.');
+    }
+}
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\Frontend\BlogController.php =====
+<?php
+
+namespace App\Http\Controllers\Frontend;
+
+// php artisan make:controller Frontend/BlogController
+
+use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\BlogCategory;
+use Illuminate\Http\Request;
+
+class BlogController extends Controller
+{
+    public function index(Request $request)
+    {
+        $blogs = Blog::with(['category', 'user'])
+            ->withCount(['comments' => fn($q) => $q->where('status', true)])
+            ->where('status', true)
+            ->when(
+                $request->search,
+                fn($q) =>
+                $q->where('title', 'like', "%{$request->search}%")
+                    ->orWhere('description', 'like', "%{$request->search}%")
+            )
+            ->when(
+                $request->category,
+                fn($q) =>
+                $q->whereHas('category', fn($q) => $q->where('slug', $request->category))
+            )
+            ->latest()
+            ->paginate(9)
+            ->withQueryString();
+
+        $categories = BlogCategory::active()
+            ->withCount(['blogs' => fn($q) => $q->where('status', true)])
+            ->get();
+
+        // Blog populer (sidebar)
+        $popularBlogs = Blog::where('status', true)
+            ->withCount(['comments' => fn($q) => $q->where('status', true)])
+            ->orderByDesc('comments_count')
+            ->limit(5)
+            ->get();
+
+        return view('frontend.blog.index', compact('blogs', 'categories', 'popularBlogs'));
+    }
+
+    // Route: /blog/{slug}
+    public function show(string $slug)
+    {
+        $blog = Blog::with([
+            'category',
+            'user',
+            'comments' => fn($q) => $q->where('status', true)->with('user')->latest(),
+        ])
+            ->where('slug', $slug)
+            ->where('status', true)
+            ->firstOrFail();
+
+        // Blog terkait
+        $relatedBlogs = Blog::with('category')
+            ->where('status', true)
+            ->where('id', '!=', $blog->id)
+            ->where('blog_category_id', $blog->blog_category_id)
+            ->latest()
+            ->limit(3)
+            ->get();
+
+        // Blog lainnya (sidebar)
+        $recentBlogs = Blog::where('status', true)
+            ->where('id', '!=', $blog->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        return view('frontend.blog.show', compact('blog', 'relatedBlogs', 'recentBlogs'));
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Http\Controllers\User\BlogCommentController.php =====
+<?php
+
+namespace App\Http\Controllers\User;
+
+// php artisan make:controller User/BlogCommentController
+
+use App\Http\Controllers\Controller;
+use App\Models\Blog;
+use App\Models\BlogComment;
+use Illuminate\Http\Request;
+
+class BlogCommentController extends Controller
+{
+    // POST /dashboard/blog/{blog}/comments
+    public function store(Request $request, Blog $blog)
+    {
+        $request->validate([
+            'comment' => 'required|string|min:5|max:1000',
+        ], [
+            'comment.required' => 'Komentar wajib diisi.',
+            'comment.min'      => 'Komentar minimal 5 karakter.',
+        ]);
+
+        BlogComment::create([
+            'user_id' => auth()->id(),
+            'blog_id' => $blog->id,
+            'comment' => $request->comment,
+            'status'  => true,
+        ]);
+
+        return back()->with('success', 'Komentar berhasil dikirim.');
+    }
+
+    // DELETE /dashboard/blog/comments/{comment}
+    public function destroy(BlogComment $comment)
+    {
+        if ($comment->user_id !== auth()->id()) {
+            abort(403, 'Kamu tidak berhak menghapus komentar ini.');
+        }
+
+        $comment->delete();
+
+        return back()->with('success', 'Komentar berhasil dihapus.');
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Models\Blog.php =====
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Blog extends Model
+{
+   use HasFactory, SoftDeletes;
+
+    protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => 'boolean',
+        ];
+    }
+
+    // â”€â”€ Relasi ke user (penulis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // â”€â”€ Relasi ke kategori â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(BlogCategory::class, 'blog_category_id');
+    }
+
+    // â”€â”€ Komentar blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function comments(): HasMany
+    {
+        return $this->hasMany(BlogComment::class)->where('status', true);
+    }
+
+    // â”€â”€ Scope: hanya yang aktif â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function scopeActive($query)
+    {
+        return $query->where('status', true);
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Models\BlogCategory.php =====
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class BlogCategory extends Model
+{
+    use HasFactory;
+
+
+    protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => 'boolean',
+        ];
+    }
+
+    // â”€â”€ Blog dalam kategori ini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function blogs(): HasMany
+    {
+        return $this->hasMany(Blog::class);
+    }
+
+    // â”€â”€ Scope: hanya yang aktif â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function scopeActive($query)
+    {
+        return $query->where('status', true);
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\app\Models\BlogComment.php =====
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class BlogComment extends Model
+{
+    use HasFactory;
+
+
+    protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'status' => 'boolean',
+        ];
+    }
+
+    // â”€â”€ Relasi ke user â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // â”€â”€ Relasi ke blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function blog(): BelongsTo
+    {
+        return $this->belongsTo(Blog::class);
+    }
+
+    // â”€â”€ Scope: hanya yang aktif â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function scopeActive($query)
+    {
+        return $query->where('status', true);
+    }
+}
+
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022347_create_blog_categories_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('blog_categories', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->boolean('status')->default(true)->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('blog_categories');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022521_create_blogs_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('blogs', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('blog_category_id')->constrained('blog_categories')->onDelete('cascade');
+ 
+            $table->string('title');
+            $table->string('slug')->unique();
+            $table->string('image')->nullable();
+            $table->text('description');
+            $table->string('seo_description')->nullable();
+            $table->boolean('status')->default(true)->index();
+ 
+            $table->softDeletes();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('blogs');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\database\migrations\2026_05_07_022532_create_blog_comments_table.php =====
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('blog_comments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('blog_id')->constrained('blogs')->onDelete('cascade');
+ 
+            $table->text('comment');
+            $table->boolean('status')->default(true)->index(); // moderasi komentar
+ 
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('blog_comments');
+    }
+};
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blog-categories\create.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Tambah Kategori Blog')
+@section('page_title', 'Tambah Kategori Blog')
+
+@section('content')
+<div style="max-width:480px;">
+    <div class="card">
+        <div class="card-header"><i class="fas fa-folder"></i> Kategori Blog Baru</div>
+        <form method="POST" action="{{ route('admin.blog-categories.store') }}">
+            @csrf
+            <div class="form-group">
+                <label class="form-label">Nama <span style="color:#EF4444;">*</span></label>
+                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                    value="{{ old('name') }}" placeholder="Nama kategori" autofocus>
+                @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group" style="margin-bottom:1.5rem;">
+                <label style="display:flex;align-items:center;gap:0.7rem;cursor:pointer;font-size:0.9rem;">
+                    <input type="checkbox" name="status" value="1" checked
+                        style="accent-color:var(--gold-pure);width:15px;height:15px;">
+                    <span>Aktifkan kategori</span>
+                </label>
+            </div>
+            <div style="display:flex;gap:1rem;">
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Simpan</button>
+                <a href="{{ route('admin.blog-categories.index') }}" class="btn-secondary"><i class="fas fa-times"></i>
+                    Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blog-categories\edit.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Edit Kategori Blog')
+@section('page_title', 'Edit Kategori Blog')
+
+@section('content')
+<div style="max-width:480px;">
+    <div class="card">
+        <div class="card-header"><i class="fas fa-edit"></i> Edit Kategori Blog</div>
+        <form method="POST" action="{{ route('admin.blog-categories.update', $blogCategory) }}">
+            @csrf @method('PUT')
+            <div class="form-group">
+                <label class="form-label">Nama <span style="color:#EF4444;">*</span></label>
+                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                    value="{{ old('name', $blogCategory->name) }}" placeholder="Nama kategori">
+                @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group" style="margin-bottom:1.5rem;">
+                <label style="display:flex;align-items:center;gap:0.7rem;cursor:pointer;font-size:0.9rem;">
+                    <input type="checkbox" name="status" value="1"
+                        {{ old('status', $blogCategory->status) ? 'checked' : '' }}
+                        style="accent-color:var(--gold-pure);width:15px;height:15px;">
+                    <span>Aktifkan kategori</span>
+                </label>
+            </div>
+            <div style="display:flex;gap:1rem;">
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Simpan Perubahan</button>
+                <a href="{{ route('admin.blog-categories.index') }}" class="btn-secondary"><i class="fas fa-times"></i>
+                    Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
+@endsection
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blog-categories\index.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Kategori Blog')
+@section('page_title', 'Kategori Blog')
+
+@section('content')
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start;">
+
+    {{-- Tabel --}}
+    <div class="data-section">
+        <div class="section-header">
+            <div class="section-title">
+                <div class="section-icon"><i class="fas fa-folder"></i></div>
+                Semua Kategori Blog
+                <span
+                    style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">({{ $categories->total() }})</span>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nama</th>
+                        <th>Slug</th>
+                        <th>Blog</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($categories as $cat)
+                    <tr>
+                        <td style="color:var(--text-muted);">{{ $categories->firstItem() + $loop->index }}</td>
+                        <td style="font-weight:600;">{{ $cat->name }}</td>
+                        <td style="color:var(--text-muted);font-size:0.82rem;">{{ $cat->slug }}</td>
+                        <td><span style="font-weight:600;color:var(--gold-pure);">{{ $cat->blogs_count }}</span></td>
+                        <td>
+                            @if($cat->status)
+                            <span class="status active">Aktif</span>
+                            @else
+                            <span class="status inactive">Nonaktif</span>
+                            @endif
+                        </td>
+                        <td>
+                            <a href="{{ route('admin.blog-categories.edit', $cat) }}" class="action-btn"><i
+                                    class="fas fa-edit"></i></a>
+                            <form method="POST" action="{{ route('admin.blog-categories.destroy', $cat) }}"
+                                style="display:inline;">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="action-btn danger"
+                                    data-confirm="Hapus kategori {{ $cat->name }}?">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state"><i class="fas fa-folder"></i>
+                                <p>Belum ada kategori.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($categories->hasPages())
+        <div class="pagination">{{ $categories->links('pagination::simple-default') }}</div>
+        @endif
+    </div>
+
+    {{-- Form Tambah --}}
+    <div class="card">
+        <div class="card-header"><i class="fas fa-plus"></i> Tambah Kategori</div>
+        <form method="POST" action="{{ route('admin.blog-categories.store') }}">
+            @csrf
+            <div class="form-group">
+                <label class="form-label">Nama <span style="color:#EF4444;">*</span></label>
+                <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                    value="{{ old('name') }}" placeholder="Contoh: Tutorial">
+                @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group" style="margin-bottom:1.2rem;">
+                <label style="display:flex;align-items:center;gap:0.7rem;cursor:pointer;font-size:0.9rem;">
+                    <input type="checkbox" name="status" value="1" checked
+                        style="accent-color:var(--gold-pure);width:15px;height:15px;">
+                    <span>Aktifkan kategori</span>
+                </label>
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%;">
+                <i class="fas fa-save"></i> Simpan
+            </button>
+        </form>
+    </div>
+
+</div>
+
+@endsection
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blog-comments\index.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Komentar Blog')
+@section('page_title', 'Komentar Blog')
+
+@section('content')
+
+{{-- Filter --}}
+<div class="data-section" style="margin-bottom:1.5rem;">
+    <div style="padding:1.2rem 1.5rem;">
+        <form method="GET" action="{{ route('admin.blog-comments.index') }}"
+            style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+            <input type="text" name="search" class="form-control" placeholder="Cari isi komentar..."
+                value="{{ request('search') }}" style="max-width:260px;">
+            <select name="status" class="form-control" style="max-width:140px;">
+                <option value="">Semua Status</option>
+                <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Tampil</option>
+                <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Hidden</option>
+            </select>
+            <button type="submit" class="btn-primary"><i class="fas fa-search"></i> Filter</button>
+            @if(request()->hasAny(['search','status']))
+            <a href="{{ route('admin.blog-comments.index') }}" class="btn-secondary"><i class="fas fa-times"></i>
+                Reset</a>
+            @endif
+        </form>
+    </div>
+</div>
+
+{{-- Table --}}
+<div class="data-section">
+    <div class="section-header">
+        <div class="section-title">
+            <div class="section-icon"><i class="fas fa-comments"></i></div>
+            Semua Komentar
+            <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">({{ $comments->total() }})</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>User</th>
+                    <th>Blog</th>
+                    <th>Komentar</th>
+                    <th>Status</th>
+                    <th>Waktu</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($comments as $comment)
+                <tr>
+                    <td style="color:var(--text-muted);">{{ $comments->firstItem() + $loop->index }}</td>
+                    <td>
+                        <div style="font-weight:600;font-size:0.88rem;">{{ $comment->user->name ?? '-' }}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">{{ $comment->user->email ?? '' }}</div>
+                    </td>
+                    <td
+                        style="font-size:0.82rem;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted);">
+                        {{ $comment->blog->title ?? '-' }}
+                    </td>
+                    <td style="font-size:0.85rem;max-width:220px;">
+                        {{ Str::limit($comment->comment, 70) }}
+                    </td>
+                    <td>
+                        @if($comment->status)
+                        <span class="status active">Tampil</span>
+                        @else
+                        <span class="status inactive">Hidden</span>
+                        @endif
+                    </td>
+                    <td style="color:var(--text-muted);font-size:0.82rem;">
+                        {{ $comment->created_at->diffForHumans() }}
+                    </td>
+                    <td>
+                        {{-- Toggle: route pakai {comment} sesuai web.php --}}
+                        <form method="POST" action="{{ route('admin.blog-comments.toggle', $comment) }}"
+                            style="display:inline;">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="action-btn {{ $comment->status ? 'danger' : 'success' }}"
+                                title="{{ $comment->status ? 'Sembunyikan' : 'Tampilkan' }}">
+                                <i class="fas {{ $comment->status ? 'fa-eye-slash' : 'fa-eye' }}"></i>
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.blog-comments.destroy', $comment) }}"
+                            style="display:inline;">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="action-btn danger" title="Hapus"
+                                data-confirm="Yakin ingin menghapus komentar ini?">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fas fa-comments"></i>
+                            <p>Belum ada komentar.</p>
+                        </div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    @if($comments->hasPages())
+    <div class="pagination">{{ $comments->links('pagination::simple-default') }}</div>
+    @endif
+</div>
+
+@endsection
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blogs\create.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Tulis Blog')
+@section('page_title', 'Tulis Blog')
+
+@section('content')
+
+<form method="POST" action="{{ route('admin.blogs.store') }}" enctype="multipart/form-data">
+    @csrf
+
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start;">
+
+        {{-- Kiri: Konten --}}
+        <div>
+            <div class="card">
+                <div class="card-header"><i class="fas fa-newspaper"></i> Konten Blog</div>
+
+                <div class="form-group">
+                    <label class="form-label">Judul <span style="color:#EF4444;">*</span></label>
+                    <input type="text" name="title" class="form-control @error('title') is-invalid @enderror"
+                        value="{{ old('title') }}" placeholder="Judul artikel blog..." autofocus>
+                    @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Konten <span style="color:#EF4444;">*</span></label>
+                    <textarea name="description" id="blogContent"
+                        class="form-control @error('description') is-invalid @enderror" rows="14"
+                        placeholder="Tulis konten blog di sini...">{{ old('description') }}</textarea>
+                    @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">SEO Description</label>
+                    <input type="text" name="seo_description" class="form-control" value="{{ old('seo_description') }}"
+                        placeholder="Deskripsi singkat untuk mesin pencari (max 255 karakter)" maxlength="255">
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;" id="seoCount">0 / 255
+                        karakter</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Kanan: Settings --}}
+        <div>
+            <div class="card" style="margin-bottom:1.5rem;">
+                <div class="card-header"><i class="fas fa-cog"></i> Pengaturan</div>
+
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="1" {{ old('status', '1') === '1' ? 'selected' : '' }}>Publish</option>
+                        <option value="0" {{ old('status') === '0' ? 'selected' : '' }}>Draft</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Kategori <span style="color:#EF4444;">*</span></label>
+                    <select name="blog_category_id"
+                        class="form-control @error('blog_category_id') is-invalid @enderror">
+                        <option value="">Pilih kategori...</option>
+                        @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ old('blog_category_id') == $cat->id ? 'selected' : '' }}>
+                            {{ $cat->name }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('blog_category_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><i class="fas fa-image"></i> Gambar Cover</div>
+                <input type="file" name="image" class="form-control" accept="image/*"
+                    onchange="previewImage(this,'imgPreview')">
+                <img id="imgPreview" src="" alt=""
+                    style="display:none;width:100%;border-radius:10px;margin-top:0.8rem;border:1px solid rgba(244,196,48,0.15);">
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Publish Blog</button>
+        <a href="{{ route('admin.blogs.index') }}" class="btn-secondary"><i class="fas fa-times"></i> Batal</a>
+    </div>
+
+</form>
+
+@endsection
+
+@push('scripts')
+<script>
+function previewImage(input, id) {
+    if (input.files && input.files[0]) {
+        const r = new FileReader();
+        r.onload = e => {
+            const el = document.getElementById(id);
+            el.src = e.target.result;
+            el.style.display = 'block';
+        };
+        r.readAsDataURL(input.files[0]);
+    }
+}
+const seoInput = document.querySelector('[name="seo_description"]');
+const seoCount = document.getElementById('seoCount');
+if (seoInput && seoCount) {
+    seoInput.addEventListener('input', () => {
+        seoCount.textContent = seoInput.value.length + ' / 255 karakter';
+    });
+}
+</script>
+@endpush
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blogs\edit.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Edit Blog')
+@section('page_title', 'Edit Blog')
+
+@section('content')
+
+<form method="POST" action="{{ route('admin.blogs.update', $blog) }}" enctype="multipart/form-data">
+    @csrf @method('PUT')
+
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;align-items:start;">
+
+        {{-- Kiri --}}
+        <div>
+            <div class="card">
+                <div class="card-header"><i class="fas fa-edit"></i> Edit Konten</div>
+
+                <div class="form-group">
+                    <label class="form-label">Judul <span style="color:#EF4444;">*</span></label>
+                    <input type="text" name="title" class="form-control @error('title') is-invalid @enderror"
+                        value="{{ old('title', $blog->title) }}" placeholder="Judul artikel">
+                    @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Konten <span style="color:#EF4444;">*</span></label>
+                    <textarea name="description" class="form-control @error('description') is-invalid @enderror"
+                        rows="14" placeholder="Konten blog...">{{ old('description', $blog->description) }}</textarea>
+                    @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">SEO Description</label>
+                    <input type="text" name="seo_description" class="form-control"
+                        value="{{ old('seo_description', $blog->seo_description) }}" maxlength="255">
+                </div>
+            </div>
+        </div>
+
+        {{-- Kanan --}}
+        <div>
+            <div class="card" style="margin-bottom:1.5rem;">
+                <div class="card-header"><i class="fas fa-cog"></i> Pengaturan</div>
+
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="1" {{ old('status', $blog->status ? '1' : '0') === '1' ? 'selected' : '' }}>
+                            Publish</option>
+                        <option value="0" {{ old('status', $blog->status ? '1' : '0') === '0' ? 'selected' : '' }}>Draft
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Kategori <span style="color:#EF4444;">*</span></label>
+                    <select name="blog_category_id"
+                        class="form-control @error('blog_category_id') is-invalid @enderror">
+                        <option value="">Pilih kategori...</option>
+                        @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}"
+                            {{ old('blog_category_id', $blog->blog_category_id) == $cat->id ? 'selected' : '' }}>
+                            {{ $cat->name }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('blog_category_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><i class="fas fa-image"></i> Gambar Cover</div>
+                @if($blog->image)
+                <img src="{{ asset('storage/'.$blog->image) }}" id="imgPreview"
+                    style="width:100%;border-radius:10px;margin-bottom:0.8rem;border:1px solid rgba(244,196,48,0.15);">
+                @else
+                <img id="imgPreview" src="" style="display:none;width:100%;border-radius:10px;margin-bottom:0.8rem;">
+                @endif
+                <input type="file" name="image" class="form-control" accept="image/*"
+                    onchange="previewImage(this,'imgPreview')">
+            </div>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Simpan Perubahan</button>
+        <a href="{{ route('admin.blogs.index') }}" class="btn-secondary"><i class="fas fa-times"></i> Batal</a>
+    </div>
+
+</form>
+
+@endsection
+
+@push('scripts')
+<script>
+function previewImage(input, id) {
+    if (input.files && input.files[0]) {
+        const r = new FileReader();
+        r.onload = e => {
+            const el = document.getElementById(id);
+            el.src = e.target.result;
+            el.style.display = 'block';
+        };
+        r.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+@endpush
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blogs\index.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', 'Manajemen Blog')
+@section('page_title', 'Manajemen Blog')
+
+@section('content')
+
+{{-- Filter --}}
+<div class="data-section" style="margin-bottom:1.5rem;">
+    <div style="padding:1.2rem 1.5rem;">
+        <form method="GET" action="{{ route('admin.blogs.index') }}"
+            style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+            <input type="text" name="search" class="form-control" placeholder="Cari judul blog..."
+                value="{{ request('search') }}" style="max-width:260px;">
+            <select name="category" class="form-control" style="max-width:180px;">
+                <option value="">Semua Kategori</option>
+                @foreach($categories as $cat)
+                <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>
+                    {{ $cat->name }}
+                </option>
+                @endforeach
+            </select>
+            <select name="status" class="form-control" style="max-width:140px;">
+                <option value="">Semua Status</option>
+                <option value="1" {{ request('status') === '1' ? 'selected' : '' }}>Publish</option>
+                <option value="0" {{ request('status') === '0' ? 'selected' : '' }}>Draft</option>
+            </select>
+            <button type="submit" class="btn-primary"><i class="fas fa-search"></i> Filter</button>
+            @if(request()->hasAny(['search','category','status']))
+            <a href="{{ route('admin.blogs.index') }}" class="btn-secondary"><i class="fas fa-times"></i> Reset</a>
+            @endif
+        </form>
+    </div>
+</div>
+
+{{-- Table --}}
+<div class="data-section">
+    <div class="section-header">
+        <div class="section-title">
+            <div class="section-icon"><i class="fas fa-newspaper"></i></div>
+            Semua Blog
+            <span style="font-size:0.8rem;color:var(--text-muted);font-weight:400;">({{ $blogs->total() }})</span>
+        </div>
+        <a href="{{ route('admin.blogs.create') }}" class="btn-primary">
+            <i class="fas fa-plus"></i> Tulis Blog
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Judul</th>
+                    <th>Kategori</th>
+                    <th>Komentar</th>
+                    <th>Status</th>
+                    <th>Dibuat</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($blogs as $blog)
+                <tr>
+                    <td style="color:var(--text-muted);">{{ $blogs->firstItem() + $loop->index }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:0.8rem;">
+                            @if($blog->image)
+                            <img src="{{ asset('storage/'.$blog->image) }}"
+                                style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+                            @else
+                            <div
+                                style="width:40px;height:40px;background:linear-gradient(135deg,var(--gold-pure),var(--gold-glow));border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--black-void);font-size:0.8rem;flex-shrink:0;">
+                                <i class="fas fa-newspaper"></i>
+                            </div>
+                            @endif
+                            <div>
+                                <div
+                                    style="font-weight:600;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    {{ $blog->title }}
+                                </div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);">{{ $blog->slug }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="font-size:0.85rem;color:var(--text-muted);">
+                        {{ $blog->category->name ?? '-' }}
+                    </td>
+                    <td>
+                        <span style="font-weight:600;color:var(--gold-pure);">{{ $blog->comments_count }}</span>
+                    </td>
+                    <td>
+                        @if($blog->status)
+                        <span class="status active">Publish</span>
+                        @else
+                        <span class="status draft">Draft</span>
+                        @endif
+                    </td>
+                    <td style="color:var(--text-muted);font-size:0.85rem;">
+                        {{ $blog->created_at->format('d M Y') }}
+                    </td>
+                    <td>
+                        <a href="{{ route('admin.blogs.show', $blog) }}" class="action-btn" title="Detail">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="{{ route('admin.blogs.edit', $blog) }}" class="action-btn" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <form method="POST" action="{{ route('admin.blogs.destroy', $blog) }}" style="display:inline;">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="action-btn danger" title="Hapus"
+                                data-confirm="Hapus blog {{ $blog->title }}?">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fas fa-newspaper"></i>
+                            <p>Belum ada blog. <a href="{{ route('admin.blogs.create') }}"
+                                    style="color:var(--gold-pure);">Tulis sekarang</a></p>
+                        </div>
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    @if($blogs->hasPages())
+    <div class="pagination">{{ $blogs->links('pagination::simple-default') }}</div>
+    @endif
+</div>
+
+@endsection
+===== E:\Rudi\program\web\cp_kodingin\resources\views\admin\blogs\show.blade.php =====
+@extends('admin.layouts.app')
+
+@section('title', $blog->title)
+@section('page_title', 'Detail Blog')
+
+@section('content')
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start;">
+
+    {{-- Kiri: Konten Blog --}}
+    <div>
+        <div class="card" style="margin-bottom:1.5rem;">
+            {{-- Cover --}}
+            @if($blog->image)
+            <img src="{{ asset('storage/'.$blog->image) }}"
+                style="width:100%;border-radius:12px;margin-bottom:1.5rem;max-height:300px;object-fit:cover;border:1px solid rgba(244,196,48,0.15);">
+            @endif
+
+            {{-- Meta --}}
+            <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap;">
+                @if($blog->status)
+                <span class="status active">Publish</span>
+                @else
+                <span class="status draft">Draft</span>
+                @endif
+                @if($blog->category)
+                <span
+                    style="font-size:0.78rem;color:var(--gold-pure);background:rgba(244,196,48,0.1);padding:2px 10px;border-radius:20px;">
+                    {{ $blog->category->name }}
+                </span>
+                @endif
+                <span style="font-size:0.78rem;color:var(--text-muted);">
+                    <i class="fas fa-calendar" style="margin-right:4px;"></i>{{ $blog->created_at->format('d M Y') }}
+                </span>
+            </div>
+
+            <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:1rem;line-height:1.4;">{{ $blog->title }}</h2>
+
+            <div style="font-size:0.9rem;color:var(--text-muted);line-height:1.8;white-space:pre-line;">
+                {{ $blog->description }}
+            </div>
+        </div>
+
+        {{-- Komentar --}}
+        <div class="data-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <div class="section-icon"><i class="fas fa-comments"></i></div>
+                    Komentar ({{ $blog->comments->count() }})
+                </div>
+                <a href="{{ route('admin.blog-comments.index') }}" class="btn-secondary"
+                    style="font-size:0.8rem;padding:0.5rem 1rem;">
+                    Kelola Semua
+                </a>
+            </div>
+            @forelse($blog->comments as $comment)
+            <div style="padding:1rem 1.5rem;border-bottom:1px solid rgba(244,196,48,0.05);">
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;">
+                    <span style="font-weight:600;font-size:0.88rem;">{{ $comment->user->name ?? '-' }}</span>
+                    <div style="display:flex;align-items:center;gap:0.5rem;">
+                        <span
+                            style="font-size:0.75rem;color:var(--text-muted);">{{ $comment->created_at->diffForHumans() }}</span>
+                        @if(!$comment->status)
+                        <span class="status inactive" style="font-size:0.7rem;">Hidden</span>
+                        @endif
+                    </div>
+                </div>
+                <div style="font-size:0.85rem;color:var(--text-muted);">{{ $comment->comment }}</div>
+            </div>
+            @empty
+            <div class="empty-state" style="padding:2rem;">
+                <i class="fas fa-comments"></i>
+                <p>Belum ada komentar</p>
+            </div>
+            @endforelse
+        </div>
+    </div>
+
+    {{-- Kanan --}}
+    <div>
+        <div class="card">
+            <div class="card-header"><i class="fas fa-cog"></i> Aksi</div>
+            <div style="display:flex;flex-direction:column;gap:0.6rem;">
+                <a href="{{ route('admin.blogs.edit', $blog) }}" class="btn-primary"
+                    style="width:100%;justify-content:center;">
+                    <i class="fas fa-edit"></i> Edit Blog
+                </a>
+                <form method="POST" action="{{ route('admin.blogs.destroy', $blog) }}">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="btn-danger" style="width:100%;justify-content:center;"
+                        data-confirm="Yakin ingin menghapus blog ini?">
+                        <i class="fas fa-trash"></i> Hapus Blog
+                    </button>
+                </form>
+                <a href="{{ route('admin.blogs.index') }}" class="btn-secondary"
+                    style="width:100%;justify-content:center;">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </a>
+            </div>
+        </div>
+
+        @if($blog->seo_description)
+        <div class="card" style="margin-top:1.5rem;">
+            <div class="card-header"><i class="fas fa-search"></i> SEO</div>
+            <div style="font-size:0.85rem;color:var(--text-muted);">{{ $blog->seo_description }}</div>
+        </div>
+        @endif
+    </div>
+
+</div>
+
+@endsection
+===== E:\Rudi\program\web\cp_kodingin\resources\views\frontend\blog\index.blade.php =====
+@extends('frontend.layouts.app')
+
+@section('title', 'Blog & Panduan')
+
+@section('content')
+
+    <section style="padding:5rem 3rem 3rem;position:relative;z-index:2;">
+        <div style="max-width:1200px;margin:0 auto;">
+            <div class="reveal">
+                <span class="section-eyebrow">Blog & Panduan</span>
+                <h1 class="section-title">Artikel Terbaru</h1>
+                <p class="section-sub">Tips, tutorial, dan panduan dari para expert</p>
+            </div>
+        </div>
+    </section>
+
+    {{-- Filter --}}
+    <section style="padding:0 3rem 2rem;position:relative;z-index:2;">
+        <div style="max-width:1200px;margin:0 auto;">
+            <form method="GET" action="{{ url('/blog') }}"
+                style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+                <input type="text" name="search" class="form-control" style="max-width:300px;"
+                    placeholder="ðŸ” Cari artikel..." value="{{ request('search') }}">
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <a href="{{ url('/blog') }}" class="{{ !request('category') ? 'btn-gold' : 'btn-ghost' }}"
+                        style="padding:0.6rem 1.2rem;font-size:0.85rem;border-radius:50px;">
+                        Semua
+                    </a>
+                    @foreach ($categories as $cat)
+                        <a href="{{ url('/blog?category=' . $cat->slug) }}"
+                            class="{{ request('category') === $cat->slug ? 'btn-gold' : 'btn-ghost' }}"
+                            style="padding:0.6rem 1.2rem;font-size:0.85rem;border-radius:50px;">
+                            {{ $cat->name }}
+                        </a>
+                    @endforeach
+                </div>
+                @if (request('search'))
+                    <button type="submit" class="btn-outline" style="padding:0.6rem 1.2rem;font-size:0.85rem;">
+                        <i class="fas fa-search"></i> Cari
+                    </button>
+                @endif
+            </form>
+        </div>
+    </section>
+
+    {{-- Blog Grid --}}
+    <section style="padding:0 3rem 8rem;position:relative;z-index:2;">
+        <div style="max-width:1200px;margin:0 auto;">
+            @if ($blogs->count())
+
+                {{-- Featured â€” blog pertama lebih besar --}}
+                @if ($blogs->currentPage() === 1)
+                    @php $featured = $blogs->first(); @endphp
+                    <a href="{{ url('/blog/' . $featured->slug) }}"
+                        style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:center;padding:2rem;background:rgba(255,255,255,0.04);border:1px solid rgba(244,196,48,0.15);border-radius:24px;margin-bottom:2rem;text-decoration:none;color:inherit;transition:all 0.4s;"
+                        onmouseover="this.style.borderColor='rgba(244,196,48,0.4)';this.style.transform='translateY(-4px)'"
+                        onmouseout="this.style.borderColor='rgba(244,196,48,0.15)';this.style.transform=''">
+                        <div class="blog-card-img" style="height:260px;border-radius:16px;">
+                            @if ($featured->image)
+                                <img src="{{ asset('storage/' . $featured->image) }}"
+                                    style="width:100%;height:100%;object-fit:cover;border-radius:16px;">
+                            @else
+                                <span style="font-size:4rem;">ðŸ“°</span>
+                            @endif
+                        </div>
+                        <div>
+                            <span class="blog-card-category">{{ $featured->category->name ?? 'Blog' }}</span>
+                            <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:1rem;line-height:1.3;">
+                                {{ $featured->title }}</h2>
+                            <p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.7;margin-bottom:1.2rem;">
+                                {{ Str::limit(strip_tags($featured->description), 150) }}
+                            </p>
+                            <div class="blog-card-meta">
+                                <span><i class="fas fa-user"
+                                        style="margin-right:4px;color:var(--gold-primary);"></i>{{ $featured->user->name ?? '-' }}</span>
+                                <span><i class="fas fa-comments"
+                                        style="margin-right:4px;color:var(--gold-primary);"></i>{{ $featured->comments_count }}
+                                    komentar</span>
+                                <span><i class="fas fa-calendar"
+                                        style="margin-right:4px;color:var(--gold-primary);"></i>{{ $featured->created_at->format('d M Y') }}</span>
+                            </div>
+                        </div>
+                    </a>
+                @endif
+
+                {{-- Grid blog lainnya --}}
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;">
+                    @foreach ($blogs->currentPage() === 1 ? $blogs->skip(1) : $blogs as $blog)
+                        <a href="{{ url('/blog/' . $blog->slug) }}" class="blog-card reveal">
+                            <div class="blog-card-img">
+                                @if ($blog->image)
+                                    <img src="{{ asset('storage/' . $blog->image) }}"
+                                        style="width:100%;height:100%;object-fit:cover;">
+                                @else
+                                    <span style="font-size:3rem;">ðŸ“</span>
+                                @endif
+                            </div>
+                            <div class="blog-card-body">
+                                <span class="blog-card-category">{{ $blog->category->name ?? 'Blog' }}</span>
+                                <div class="blog-card-title">{{ $blog->title }}</div>
+                                <p
+                                    style="font-size:0.85rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0.8rem;">
+                                    {{ Str::limit(strip_tags($blog->description), 100) }}
+                                </p>
+                                <div class="blog-card-meta">
+                                    <span>{{ $blog->created_at->format('d M Y') }}</span>
+                                    <span><i class="fas fa-comments"
+                                            style="margin-right:3px;"></i>{{ $blog->comments_count }}</span>
+                                </div>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+
+                {{-- Pagination --}}
+                @if ($blogs->hasPages())
+                    <div class="pagination-wrap">
+                        @if ($blogs->onFirstPage())
+                            <span style="opacity:0.3;"><i class="fas fa-chevron-left"></i></span>
+                        @else
+                            <a href="{{ $blogs->previousPageUrl() }}"><i class="fas fa-chevron-left"></i></a>
+                        @endif
+                        @foreach ($blogs->getUrlRange(1, $blogs->lastPage()) as $page => $url)
+                            @if ($page == $blogs->currentPage())
+                                <span class="current">{{ $page }}</span>
+                            @else
+                                <a href="{{ $url }}">{{ $page }}</a>
+                            @endif
+                        @endforeach
+                        @if ($blogs->hasMorePages())
+                            <a href="{{ $blogs->nextPageUrl() }}"><i class="fas fa-chevron-right"></i></a>
+                        @else
+                            <span style="opacity:0.3;"><i class="fas fa-chevron-right"></i></span>
+                        @endif
+                    </div>
+                @endif
+            @else
+                <div style="text-align:center;padding:6rem 2rem;">
+                    <div style="font-size:4rem;margin-bottom:1rem;">ðŸ“­</div>
+                    <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:0.5rem;">Artikel tidak ditemukan</h3>
+                    <a href="{{ url('/blog') }}" class="btn-gold" style="margin-top:1rem;">Lihat Semua Artikel</a>
+                </div>
+            @endif
+        </div>
+    </section>
+
+@endsection
+
+===== E:\Rudi\program\web\cp_kodingin\resources\views\frontend\blog\show.blade.php =====
+@extends('frontend.layouts.app')
+
+@section('title', $blog->title)
+@section('meta_description', $blog->seo_description ?? Str::limit(strip_tags($blog->description), 155))
+
+@section('content')
+
+    <section style="padding:5rem 3rem 8rem;position:relative;z-index:2;">
+        <div style="max-width:1200px;margin:0 auto;">
+            <div style="display:grid;grid-template-columns:1fr 320px;gap:3rem;align-items:start;">
+
+                {{-- Konten Blog --}}
+                <article>
+                    {{-- Breadcrumb --}}
+                    <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:1.5rem;">
+                        <a href="{{ url('/blog') }}" style="color:var(--gold-primary);text-decoration:none;">Blog</a>
+                        <span style="margin:0 0.5rem;">/</span>
+                        @if ($blog->category)
+                            <a href="{{ url('/blog?category=' . $blog->category->slug) }}"
+                                style="color:var(--gold-primary);text-decoration:none;">{{ $blog->category->name }}</a>
+                            <span style="margin:0 0.5rem;">/</span>
+                        @endif
+                        <span>{{ Str::limit($blog->title, 40) }}</span>
+                    </div>
+
+                    {{-- Category & Meta --}}
+                    <span class="blog-card-category" style="font-size:0.72rem;">{{ $blog->category->name ?? 'Blog' }}</span>
+
+                    <h1
+                        style="font-size:clamp(1.8rem,4vw,2.8rem);font-weight:900;line-height:1.2;margin:1rem 0;background:linear-gradient(135deg,#fff,var(--gold-primary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+                        {{ $blog->title }}
+                    </h1>
+
+                    <div
+                        style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;color:var(--text-secondary);margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid rgba(255,255,255,0.06);">
+                        <span><i class="fas fa-user"
+                                style="color:var(--gold-primary);margin-right:4px;"></i>{{ $blog->user->name ?? '-' }}</span>
+                        <span><i class="fas fa-calendar"
+                                style="color:var(--gold-primary);margin-right:4px;"></i>{{ $blog->created_at->format('d M Y') }}</span>
+                        <span><i class="fas fa-comments"
+                                style="color:var(--gold-primary);margin-right:4px;"></i>{{ $blog->comments->count() }}
+                            komentar</span>
+                    </div>
+
+                    {{-- Cover Image --}}
+                    @if ($blog->image)
+                        <img src="{{ asset('storage/' . $blog->image) }}"
+                            style="width:100%;border-radius:20px;margin-bottom:2rem;max-height:400px;object-fit:cover;border:1px solid rgba(244,196,48,0.1);">
+                    @endif
+
+                    {{-- Konten --}}
+                    <div
+                        style="font-size:0.95rem;color:var(--text-secondary);line-height:1.9;white-space:pre-line;margin-bottom:3rem;">
+                        {{ $blog->description }}
+                    </div>
+
+                    {{-- Komentar --}}
+                    <div id="comments" style="margin-bottom:3rem;">
+                        <h3 style="font-size:1.2rem;font-weight:800;margin-bottom:1.5rem;">
+                            Komentar ({{ $blog->comments->count() }})
+                        </h3>
+
+                        @forelse($blog->comments as $comment)
+                            <div
+                                style="display:flex;gap:1rem;padding:1.2rem;background:rgba(255,255,255,0.03);border:1px solid rgba(244,196,48,0.08);border-radius:14px;margin-bottom:0.8rem;">
+                                <div
+                                    style="width:40px;height:40px;background:linear-gradient(135deg,var(--gold-primary),var(--gold-light));border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--dark-1);font-size:0.85rem;flex-shrink:0;">
+                                    {{ strtoupper(substr($comment->user->name ?? 'U', 0, 2)) }}
+                                </div>
+                                <div style="flex:1;">
+                                    <div style="display:flex;justify-content:space-between;margin-bottom:0.4rem;">
+                                        <span
+                                            style="font-weight:600;font-size:0.9rem;">{{ $comment->user->name ?? '-' }}</span>
+                                        <span
+                                            style="font-size:0.78rem;color:var(--text-secondary);">{{ $comment->created_at->diffForHumans() }}</span>
+                                    </div>
+                                    <p style="font-size:0.88rem;color:var(--text-secondary);line-height:1.6;">
+                                        {{ $comment->comment }}</p>
+
+                                    {{-- Hapus komentar milik sendiri --}}
+                                    @auth
+                                        @if ($comment->user_id === auth()->id())
+                                            <form method="POST" action="{{ route('user.blog.comments.destroy', $comment) }}"
+                                                style="display:inline;">
+                                                @csrf @method('DELETE')
+                                                <button type="submit"
+                                                    style="background:none;border:none;color:rgba(239,68,68,0.6);font-size:0.75rem;cursor:pointer;margin-top:0.4rem;font-family:'Inter',sans-serif;"
+                                                    onclick="return confirm('Hapus komentar ini?')">
+                                                    <i class="fas fa-trash" style="margin-right:3px;"></i> Hapus
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endauth
+                                </div>
+                            </div>
+                        @empty
+                            <div style="text-align:center;padding:2rem;color:var(--text-secondary);font-size:0.9rem;">
+                                Belum ada komentar. Jadilah yang pertama!
+                            </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Form Komentar --}}
+                    @auth
+                        <div
+                            style="padding:1.5rem;background:rgba(255,255,255,0.03);border:1px solid rgba(244,196,48,0.1);border-radius:16px;">
+                            <h4 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">Tulis Komentar</h4>
+                            <form method="POST" action="{{ route('user.blog.comments.store', $blog) }}">
+                                @csrf
+                                <div class="form-group">
+                                    <textarea name="comment" class="form-control @error('comment') is-invalid @enderror" rows="4"
+                                        placeholder="Tulis komentar kamu..."></textarea>
+                                    @error('comment')
+                                        <div class="invalid-feedback"><i class="fas fa-exclamation-circle"></i> {{ $message }}
+                                        </div>
+                                    @enderror
+                                </div>
+                                <button type="submit" class="btn-gold" style="padding:0.7rem 1.5rem;font-size:0.9rem;">
+                                    <i class="fas fa-paper-plane"></i> Kirim Komentar
+                                </button>
+                            </form>
+                        </div>
+                    @else
+                        <div
+                            style="text-align:center;padding:1.5rem;background:rgba(255,255,255,0.03);border:1px solid rgba(244,196,48,0.1);border-radius:16px;">
+                            <p style="color:var(--text-secondary);margin-bottom:1rem;">Login untuk meninggalkan komentar.</p>
+                            <a href="{{ route('auth.login') }}" class="btn-gold"
+                                style="padding:0.7rem 1.5rem;font-size:0.9rem;">Masuk</a>
+                        </div>
+                    @endauth
+                </article>
+
+                {{-- Sidebar --}}
+                <aside style="position:sticky;top:90px;">
+                    {{-- Artikel Terkait --}}
+                    @if ($relatedBlogs->count())
+                        <div style="margin-bottom:2rem;">
+                            <h3
+                                style="font-size:1rem;font-weight:800;margin-bottom:1rem;color:var(--gold-primary);text-transform:uppercase;letter-spacing:1px;font-size:0.75rem;">
+                                Artikel Terkait</h3>
+                            @foreach ($relatedBlogs as $related)
+                                <a href="{{ url('/blog/' . $related->slug) }}"
+                                    style="display:flex;gap:0.8rem;padding:0.8rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.03);border:1px solid rgba(244,196,48,0.08);border-radius:12px;text-decoration:none;color:inherit;transition:border-color 0.3s;"
+                                    onmouseover="this.style.borderColor='rgba(244,196,48,0.3)'"
+                                    onmouseout="this.style.borderColor='rgba(244,196,48,0.08)'">
+                                    <div
+                                        style="width:60px;height:60px;border-radius:8px;flex-shrink:0;overflow:hidden;background:rgba(244,196,48,0.08);display:flex;align-items:center;justify-content:center;">
+                                        @if ($related->image)
+                                            <img src="{{ asset('storage/' . $related->image) }}"
+                                                style="width:100%;height:100%;object-fit:cover;">
+                                        @else
+                                            <span style="font-size:1.5rem;">ðŸ“</span>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:0.85rem;font-weight:600;line-height:1.4;margin-bottom:0.3rem;">
+                                            {{ Str::limit($related->title, 50) }}</div>
+                                        <div style="font-size:0.75rem;color:var(--text-secondary);">
+                                            {{ $related->created_at->format('d M Y') }}</div>
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    {{-- Artikel Terbaru --}}
+                    @if ($recentBlogs->count())
+                        <div>
+                            <h3
+                                style="font-weight:800;margin-bottom:1rem;color:var(--gold-primary);text-transform:uppercase;letter-spacing:1px;font-size:0.75rem;">
+                                Artikel Terbaru</h3>
+                            @foreach ($recentBlogs as $recent)
+                                <a href="{{ url('/blog/' . $recent->slug) }}"
+                                    style="display:block;padding:0.7rem 0;border-bottom:1px solid rgba(255,255,255,0.05);text-decoration:none;color:var(--text-secondary);font-size:0.88rem;transition:color 0.2s;"
+                                    onmouseover="this.style.color='var(--gold-primary)'"
+                                    onmouseout="this.style.color='var(--text-secondary)'">
+                                    <i class="fas fa-angle-right"
+                                        style="color:var(--gold-primary);margin-right:0.4rem;"></i>
+                                    {{ Str::limit($recent->title, 45) }}
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
+                </aside>
+
+            </div>
+        </div>
+    </section>
+
+@endsection
+
+===== E:\Rudi\program\web\cp_kodingin\resources\views\frontend\blog\show_opsi_lain.blade.php =====
+{{-- INI BISA DI GANTI DENGAN SHOW.BLADE.PHP TAMPILANNYA  --}}
+@extends('frontend.layouts.app')
+
+@section('title', $blog->title)
+@section('meta_description', $blog->seo_description ?? Str::limit(strip_tags($blog->description), 155))
+
+@section('content')
+
+    <section class="blog-detail-section">
+        <div class="blog-detail-container">
+            <div class="blog-detail-grid">
+
+                {{-- Konten Blog --}}
+                <article>
+
+                    {{-- Breadcrumb --}}
+                    <div class="blog-breadcrumb">
+                        <a href="{{ url('/blog') }}">Blog</a>
+                        <span>/</span>
+
+                        @if ($blog->category)
+                            <a href="{{ url('/blog?category=' . $blog->category->slug) }}">
+                                {{ $blog->category->name }}
+                            </a>
+                            <span>/</span>
+                        @endif
+
+                        <small>{{ Str::limit($blog->title, 45) }}</small>
+                    </div>
+
+                    {{-- Header --}}
+                    <header class="blog-detail-header">
+                        <div class="blog-detail-category">
+                            {{ $blog->category->name ?? 'Blog' }}
+                        </div>
+
+                        <h1 class="blog-detail-title">
+                            {{ $blog->title }}
+                        </h1>
+
+                        <p class="blog-detail-excerpt">
+                            {{ $blog->seo_description ?? Str::limit(strip_tags($blog->description), 180) }}
+                        </p>
+
+                        <div class="blog-detail-meta">
+                            <span>
+                                <i class="fas fa-user"></i>
+                                {{ $blog->user->name ?? '-' }}
+                            </span>
+
+                            <span>
+                                <i class="fas fa-calendar"></i>
+                                {{ $blog->created_at->format('d M Y') }}
+                            </span>
+
+                            <span>
+                                <i class="fas fa-comments"></i>
+                                {{ $blog->comments->count() }} komentar
+                            </span>
+                        </div>
+                    </header>
+
+                    {{-- Cover Image --}}
+                    @if ($blog->image)
+                        <img src="{{ asset('storage/' . $blog->image) }}" alt="{{ $blog->title }}"
+                            class="blog-detail-cover">
+                    @endif
+
+                    {{-- Daftar Isi --}}
+                    <div class="blog-toc">
+                        <h3>Daftar Isi</h3>
+                        <a href="#content">Mulai Pembahasan</a>
+                        <a href="#comments">Komentar Pembaca</a>
+                        <a href="#comment-form">Tulis Komentar</a>
+                    </div>
+
+                    {{-- Konten --}}
+                    <div id="content" class="blog-detail-content">
+                        {!! $blog->description !!}
+                    </div>
+
+                    {{-- Komentar --}}
+                    <div id="comments" class="blog-comments">
+                        <h3 class="blog-comments-title">
+                            Komentar ({{ $blog->comments->count() }})
+                        </h3>
+
+                        @forelse($blog->comments as $comment)
+                            <div class="blog-comment-card">
+                                <div class="blog-comment-avatar">
+                                    {{ strtoupper(substr($comment->user->name ?? 'U', 0, 2)) }}
+                                </div>
+
+                                <div class="blog-comment-body">
+                                    <div class="blog-comment-head">
+                                        <span class="blog-comment-name">
+                                            {{ $comment->user->name ?? '-' }}
+                                        </span>
+
+                                        <span class="blog-comment-date">
+                                            {{ $comment->created_at->diffForHumans() }}
+                                        </span>
+                                    </div>
+
+                                    <p class="blog-comment-text">
+                                        {{ $comment->comment }}
+                                    </p>
+
+                                    @auth
+                                        @if ($comment->user_id === auth()->id())
+                                            <form method="POST" action="{{ route('user.blog.comments.destroy', $comment) }}"
+                                                style="display:inline;">
+                                                @csrf
+                                                @method('DELETE')
+
+                                                <button type="submit" class="blog-comment-delete"
+                                                    onclick="return confirm('Hapus komentar ini?')">
+                                                    <i class="fas fa-trash"></i>
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endauth
+                                </div>
+                            </div>
+                        @empty
+                            <div class="blog-comment-empty">
+                                Belum ada komentar. Jadilah yang pertama!
+                            </div>
+                        @endforelse
+                    </div>
+
+                    {{-- Form Komentar --}}
+                    <div id="comment-form">
+                        @auth
+                            <div class="blog-comment-form">
+                                <h4>Tulis Komentar</h4>
+
+                                <form method="POST" action="{{ route('user.blog.comments.store', $blog) }}">
+                                    @csrf
+
+                                    <div class="form-group">
+                                        <textarea name="comment" class="form-control @error('comment') is-invalid @enderror" rows="4"
+                                            placeholder="Tulis komentar kamu...">{{ old('comment') }}</textarea>
+
+                                        @error('comment')
+                                            <div class="invalid-feedback">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {{ $message }}
+                                            </div>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit" class="btn-gold">
+                                        <i class="fas fa-paper-plane"></i>
+                                        Kirim Komentar
+                                    </button>
+                                </form>
+                            </div>
+                        @else
+                            <div class="blog-comment-form" style="text-align:center;">
+                                <p style="color:var(--text-secondary);margin-bottom:1rem;">
+                                    Login untuk meninggalkan komentar.
+                                </p>
+
+                                <a href="{{ route('auth.login') }}" class="btn-gold">
+                                    Masuk
+                                </a>
+                            </div>
+                        @endauth
+                    </div>
+
+                </article>
+
+                {{-- Sidebar --}}
+                <aside class="blog-sidebar">
+
+                    {{-- CTA --}}
+                    <div class="sidebar-card sidebar-cta">
+                        <div class="sidebar-cta-icon">ðŸš€</div>
+
+                        <h3>Tingkatkan Skill Coding Kamu</h3>
+
+                        <p>
+                            Belajar Flutter, Laravel, UI/UX, dan Web Development
+                            dari nol sampai bisa bareng Kodingin.
+                        </p>
+
+                        <a href="{{ url('/kursus') }}" class="btn-gold">
+                            Mulai Belajar
+                        </a>
+                    </div>
+
+                    {{-- Artikel Terkait --}}
+                    @if ($relatedBlogs->count())
+                        <div class="sidebar-card">
+                            <h3 class="sidebar-title">Artikel Terkait</h3>
+
+                            <div class="sidebar-blog-list">
+                                @foreach ($relatedBlogs as $related)
+                                    <a href="{{ url('/blog/' . $related->slug) }}" class="sidebar-blog-card">
+                                        <div class="sidebar-blog-thumb">
+                                            @if ($related->image)
+                                                <img src="{{ asset('storage/' . $related->image) }}"
+                                                    alt="{{ $related->title }}">
+                                            @else
+                                                <span class="sidebar-blog-icon">ðŸ“</span>
+                                            @endif
+                                        </div>
+
+                                        <div>
+                                            <div class="sidebar-blog-title">
+                                                {{ Str::limit($related->title, 50) }}
+                                            </div>
+
+                                            <div class="sidebar-blog-date">
+                                                {{ $related->created_at->format('d M Y') }}
+                                            </div>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Artikel Terbaru --}}
+                    @if ($recentBlogs->count())
+                        <div class="sidebar-card">
+                            <h3 class="sidebar-title">Artikel Terbaru</h3>
+
+                            @foreach ($recentBlogs as $recent)
+                                <a href="{{ url('/blog/' . $recent->slug) }}" class="sidebar-recent-link">
+                                    <i class="fas fa-angle-right"></i>
+                                    {{ Str::limit($recent->title, 48) }}
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
+
+                </aside>
+
+            </div>
+        </div>
+    </section>
+
+@endsection
+
+===== E:\Rudi\program\web\cp_kodingin\routes\web.php =====
+<?php
+
+use App\Http\Controllers\Admin\SettingController;
+use Illuminate\Support\Facades\Route;
+
+
+// ============================================================
+// FRONTEND â€” PUBLIC (tidak perlu login)
+// ============================================================
+
+Route::get('/', [\App\Http\Controllers\Frontend\HomeController::class, 'index'])->name('home');
+
+// Kursus
+Route::get('/courses', [\App\Http\Controllers\Frontend\CourseController::class, 'index'])->name('courses.index');
+Route::get('/courses/{slug}', [\App\Http\Controllers\Frontend\CourseController::class, 'show'])->name('courses.show');
+
+// Blog / Panduan
+Route::get('/blog', [\App\Http\Controllers\Frontend\BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [\App\Http\Controllers\Frontend\BlogController::class, 'show'])->name('blog.show');
+
+// Portfolio
+Route::get('/portfolio', [\App\Http\Controllers\Frontend\PortfolioController::class, 'index'])->name('portfolio.index');
+
+// Contact
+Route::get('/contact', [\App\Http\Controllers\Frontend\ContactController::class, 'index'])->name('contact.index');
+Route::post('/contact', [\App\Http\Controllers\Frontend\ContactController::class, 'store'])->name('contact.store');
+
+// Newsletter
+Route::post('/newsletter/subscribe', [\App\Http\Controllers\Frontend\NewsletterController::class, 'subscribe'])->name('newsletter.subscribe');
+
+// ============================================================
+// FRONTEND AUTH â€” USER (guest only)
+// ============================================================
+
+Route::middleware('guest')->prefix('auth')->name('auth.')->group(function () {
+    Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'index'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'store'])->name('login.store');
+
+    Route::get('/register', [\App\Http\Controllers\Auth\RegisterController::class, 'index'])->name('register');
+    Route::post('/register', [\App\Http\Controllers\Auth\RegisterController::class, 'store'])->name('register.store');
+
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'index'])->name('password.request');
+    Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'store'])->name('password.email');
+
+    Route::get('/reset-password/{token}', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'index'])->name('password.reset');
+    Route::post('/reset-password', [\App\Http\Controllers\Auth\ResetPasswordController::class, 'store'])->name('password.update');
+});
+
+// ============================================================
+// FRONTEND â€” USER DASHBOARD (harus login, role: user)
+// ============================================================
+
+Route::middleware(['auth', 'role:user'])
+    ->prefix('dashboard')
+    ->name('user.')
+    ->group(function () {
+
+    Route::post('/logout', [\App\Http\Controllers\Auth\LoginController::class, 'destroy'])->name('logout');
+
+    // Dashboard utama
+    Route::get('/', [\App\Http\Controllers\User\DashboardController::class, 'index'])->name('dashboard');
+
+    // Profile
+    Route::get('/profile', [\App\Http\Controllers\User\ProfileController::class, 'index'])->name('profile');
+    Route::put('/profile', [\App\Http\Controllers\User\ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [\App\Http\Controllers\User\ProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // My Courses
+    Route::get('/my-courses', [\App\Http\Controllers\User\EnrollmentController::class, 'index'])->name('my-courses');
+
+    // Wishlist
+    Route::get('/wishlist', [\App\Http\Controllers\User\WishlistController::class, 'index'])->name('wishlist');
+    Route::post('/wishlist/toggle/{course}', [\App\Http\Controllers\User\WishlistController::class, 'toggle'])->name('wishlist.toggle');
+
+    // Cart
+    Route::get('/cart', [\App\Http\Controllers\User\CartController::class, 'index'])->name('cart');
+    Route::post('/cart/add/{course}', [\App\Http\Controllers\User\CartController::class, 'store'])->name('cart.store');
+    Route::delete('/cart/{cart}', [\App\Http\Controllers\User\CartController::class, 'destroy'])->name('cart.destroy');
+
+    // Checkout
+    Route::post('/checkout', [\App\Http\Controllers\User\CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/checkout/{order}', [\App\Http\Controllers\User\CheckoutController::class, 'show'])->name('checkout.show');
+
+    // Verifikasi YouTube
+    Route::post('/verification/{order}/submit', [\App\Http\Controllers\User\YoutubeVerificationController::class, 'submit'])->name('verification.submit');
+    Route::get('/verification/{order}/status', [\App\Http\Controllers\User\YoutubeVerificationController::class, 'status'])->name('verification.status');
+
+    // Notifikasi
+    Route::get('/notifications', [\App\Http\Controllers\User\NotificationController::class, 'index'])->name('notifications');
+    Route::post('/notifications/{notification}/read', [\App\Http\Controllers\User\NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\User\NotificationController::class, 'readAll'])->name('notifications.readAll');
+
+    // Sertifikat
+    Route::get('/certificates', [\App\Http\Controllers\User\CertificateController::class, 'index'])->name('certificates');
+
+    // Halaman Belajar (harus enroll)
+    Route::middleware('enrolled')->group(function () {
+        Route::get('/learn/{course}', [\App\Http\Controllers\User\LearnController::class, 'index'])->name('learn');
+        Route::get('/learn/{course}/{lesson}', [\App\Http\Controllers\User\LearnController::class, 'show'])->name('learn.show');
+        Route::post('/learn/{course}/{lesson}/progress', [\App\Http\Controllers\User\LearnController::class, 'updateProgress'])->name('learn.progress');
+        Route::get('/learn/{course}/certificate', [\App\Http\Controllers\User\CertificateController::class, 'show'])->name('learn.certificate');
+        Route::get('/learn/{course}/certificate/download', [\App\Http\Controllers\User\CertificateController::class, 'download'])->name('learn.certificate.download');
+    });
+
+    // Review kursus
+    Route::post('/courses/{course}/review', [\App\Http\Controllers\User\ReviewController::class, 'store'])->name('reviews.store');
+    Route::put('/courses/{course}/review', [\App\Http\Controllers\User\ReviewController::class, 'update'])->name('reviews.update');
+    Route::delete('/courses/{course}/review', [\App\Http\Controllers\User\ReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    // Diskusi kursus
+    Route::post('/courses/{course}/discussions', [\App\Http\Controllers\User\DiscussionController::class, 'store'])->name('discussions.store');
+    Route::delete('/discussions/{thread}', [\App\Http\Controllers\User\DiscussionController::class, 'destroy'])->name('discussions.destroy');
+    Route::post('/discussions/{thread}/replies', [\App\Http\Controllers\User\DiscussionReplyController::class, 'store'])->name('discussions.replies.store');
+    Route::post('/discussions/replies/{reply}/answer', [\App\Http\Controllers\User\DiscussionReplyController::class, 'markAnswer'])->name('discussions.replies.answer');
+    Route::delete('/discussions/replies/{reply}', [\App\Http\Controllers\User\DiscussionReplyController::class, 'destroy'])->name('discussions.replies.destroy');
+
+        // Komentar blog
+        Route::post('/blog/{blog}/comments', [\App\Http\Controllers\User\BlogCommentController::class, 'store'])->name('blog.comments.store');
+        Route::delete('/blog/comments/{comment}', [\App\Http\Controllers\User\BlogCommentController::class, 'destroy'])->name('blog.comments.destroy');
+    });
+
+// ============================================================
+// BACKEND ADMIN â€” prefix /admin (terpisah dari frontend)
+// ============================================================
+
+Route::prefix('admin')->name('admin.')->group(function () {
+
+    // â”€â”€ Admin Auth (guest admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'index'])->name('login');
+        Route::post('/login', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'store'])->name('login.store');
+
+        Route::get('/forgot-password', [\App\Http\Controllers\Admin\Auth\ForgotPasswordController::class, 'index'])->name('password.request');
+        Route::post('/forgot-password', [\App\Http\Controllers\Admin\Auth\ForgotPasswordController::class, 'store'])->name('password.email');
+
+        Route::get('/reset-password/{token}', [\App\Http\Controllers\Admin\Auth\ResetPasswordController::class, 'index'])->name('password.reset');
+        Route::post('/reset-password', [\App\Http\Controllers\Admin\Auth\ResetPasswordController::class, 'store'])->name('password.update');
+    });
+
+    // â”€â”€ Admin Panel (sudah login, role: admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+
+        Route::post('/logout', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'destroy'])->name('logout');
+
+        // // Dashboard
+        Route::get('/', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+
+        // // â”€â”€ Manajemen Kursus â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class);
+        Route::resource('courses.chapters', \App\Http\Controllers\Admin\CourseChapterController::class);
+        Route::resource('courses.chapters.lessons', \App\Http\Controllers\Admin\CourseLessonController::class);
+        Route::post('courses/{course}/chapters/reorder', [\App\Http\Controllers\Admin\CourseChapterController::class, 'reorder'])->name('courses.chapters.reorder');
+        Route::post('courses/{course}/chapters/{chapter}/lessons/reorder', [\App\Http\Controllers\Admin\CourseLessonController::class, 'reorder'])->name('courses.chapters.lessons.reorder');
+
+        // // Kategori, Level, Tag
+        Route::resource('categories', \App\Http\Controllers\Admin\CourseCategoryController::class);
+        Route::resource('levels', \App\Http\Controllers\Admin\CourseLevelController::class);
+        Route::resource('tags', \App\Http\Controllers\Admin\TagController::class);
+
+        // // â”€â”€ Manajemen User & Enrollment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        Route::resource('enrollments', \App\Http\Controllers\Admin\EnrollmentController::class)->only(['index', 'show', 'destroy']);
+        Route::patch('enrollments/{enrollment}/toggle-access', [\App\Http\Controllers\Admin\EnrollmentController::class, 'toggleAccess'])->name('enrollments.toggleAccess');
+
+        // // â”€â”€ Verifikasi YouTube â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::get('verifications', [\App\Http\Controllers\Admin\YoutubeVerificationController::class, 'index'])->name('verifications.index');
+        Route::get('verifications/{verification}', [\App\Http\Controllers\Admin\YoutubeVerificationController::class, 'show'])->name('verifications.show');
+        Route::patch('verifications/{verification}/approve', [\App\Http\Controllers\Admin\YoutubeVerificationController::class, 'approve'])->name('verifications.approve');
+        Route::patch('verifications/{verification}/reject', [\App\Http\Controllers\Admin\YoutubeVerificationController::class, 'reject'])->name('verifications.reject');
+
+        // // â”€â”€ Order â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('orders', \App\Http\Controllers\Admin\OrderController::class)->only(['index', 'show']);
+
+        // // â”€â”€ Review â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('reviews', \App\Http\Controllers\Admin\ReviewController::class)->only(['index', 'destroy']);
+        Route::patch('reviews/{review}/toggle', [\App\Http\Controllers\Admin\ReviewController::class, 'toggle'])->name('reviews.toggle');
+
+        // // â”€â”€ Blog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('blogs', \App\Http\Controllers\Admin\BlogController::class);
+        Route::resource('blog-categories', \App\Http\Controllers\Admin\BlogCategoryController::class);
+        Route::resource('blog-comments', \App\Http\Controllers\Admin\BlogCommentController::class)->only(['index', 'destroy']);
+        Route::patch('blog-comments/{comment}/toggle', [\App\Http\Controllers\Admin\BlogCommentController::class, 'toggle'])->name('blog-comments.toggle');
+
+        // // â”€â”€ Portfolio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('portfolios', \App\Http\Controllers\Admin\PortfolioController::class);
+        Route::post('portfolios/reorder', [\App\Http\Controllers\Admin\PortfolioController::class, 'reorder'])->name('portfolios.reorder');
+
+        // â”€â”€ Konten Halaman â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('testimonials', \App\Http\Controllers\Admin\TestimonialController::class);
+        Route::resource('faqs', \App\Http\Controllers\Admin\FaqController::class);
+        Route::resource('banners', \App\Http\Controllers\Admin\BannerController::class);
+        Route::resource('social-links', \App\Http\Controllers\Admin\SocialLinkController::class);
+
+        // â”€â”€ Pesan Masuk â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::get('contacts', [\App\Http\Controllers\Admin\ContactController::class, 'index'])->name('contacts.index');
+        Route::get('contacts/{contact}', [\App\Http\Controllers\Admin\ContactController::class, 'show'])->name('contacts.show');
+        Route::patch('contacts/{contact}/read', [\App\Http\Controllers\Admin\ContactController::class, 'markRead'])->name('contacts.read');
+        Route::delete('contacts/{contact}', [\App\Http\Controllers\Admin\ContactController::class, 'destroy'])->name('contacts.destroy');
+
+        // â”€â”€ Newsletter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::get('newsletters', [\App\Http\Controllers\Admin\NewsletterController::class, 'index'])->name('newsletters.index');
+        Route::delete('newsletters/{newsletter}', [\App\Http\Controllers\Admin\NewsletterController::class, 'destroy'])->name('newsletters.destroy');
+
+        // â”€â”€ Diskusi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::resource('discussions', \App\Http\Controllers\Admin\DiscussionController::class)->only(['index', 'show', 'destroy']);
+        Route::resource('discussion-replies', \App\Http\Controllers\Admin\DiscussionReplyController::class)->only(['destroy']);
+
+        // â”€â”€ Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::post('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+    });
+});
+

@@ -36,9 +36,21 @@
 
             <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:1rem;line-height:1.4;">{{ $blog->title }}</h2>
 
-            <div style="font-size:0.9rem;color:var(--text-muted);line-height:1.8;white-space:pre-line;">
-                {{ $blog->description }}
-            </div>
+            @forelse($blog->blocks as $block)
+                @if($block->type === 'text')
+                <div style="font-size:0.9rem;color:var(--text-muted);line-height:1.8;white-space:pre-line;margin-bottom:1.2rem;">{{ $block->content }}</div>
+                @else
+                <figure style="margin:0 0 1.5rem;">
+                    <img src="{{ asset('storage/'.$block->image) }}" alt="{{ $block->caption }}"
+                        style="width:100%;border-radius:12px;border:1px solid rgba(244,196,48,0.15);">
+                    @if($block->caption)
+                    <figcaption style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:0.5rem;">{{ $block->caption }}</figcaption>
+                    @endif
+                </figure>
+                @endif
+            @empty
+                <div style="font-size:0.9rem;color:var(--text-muted);line-height:1.8;white-space:pre-line;">{{ $blog->description }}</div>
+            @endforelse
         </div>
 
         {{-- Komentar --}}

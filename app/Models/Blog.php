@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Blog extends Model
 {
-   use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $guarded = [];
 
@@ -21,25 +21,31 @@ class Blog extends Model
         ];
     }
 
-    // ── Relasi ke user (penulis) ──────────────────────────────────
+    // -- Relasi ke user (penulis)
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    // ── Relasi ke kategori ────────────────────────────────────────
+    // -- Relasi ke kategori
     public function category(): BelongsTo
     {
         return $this->belongsTo(BlogCategory::class, 'blog_category_id');
     }
 
-    // ── Komentar blog ─────────────────────────────────────────────
+    // -- Blok isi blog (teks & gambar, berurutan)
+    public function blocks(): HasMany
+    {
+        return $this->hasMany(BlogBlock::class)->orderBy('sort_order');
+    }
+
+    // -- Komentar blog
     public function comments(): HasMany
     {
         return $this->hasMany(BlogComment::class)->where('status', true);
     }
 
-    // ── Scope: hanya yang aktif ───────────────────────────────────
+    // -- Scope: hanya yang aktif
     public function scopeActive($query)
     {
         return $query->where('status', true);

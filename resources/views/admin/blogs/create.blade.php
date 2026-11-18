@@ -22,14 +22,6 @@
                     @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Konten <span style="color:#EF4444;">*</span></label>
-                    <textarea name="description" id="blogContent"
-                        class="form-control @error('description') is-invalid @enderror" rows="14"
-                        placeholder="Tulis konten blog di sini...">{{ old('description') }}</textarea>
-                    @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">SEO Description</label>
                     <input type="text" name="seo_description" class="form-control" value="{{ old('seo_description') }}"
@@ -38,6 +30,9 @@
                         karakter</div>
                 </div>
             </div>
+
+            {{-- Blok teks & gambar --}}
+            @include('admin.blogs._blocks')
         </div>
 
         {{-- Kanan: Settings --}}
@@ -72,6 +67,7 @@
                 <div class="card-header"><i class="fas fa-image"></i> Gambar Cover</div>
                 <input type="file" name="image" class="form-control" accept="image/*"
                     onchange="previewImage(this,'imgPreview')">
+                @error('image') <div class="invalid-feedback" style="display:block;">{{ $message }}</div> @enderror
                 <img id="imgPreview" src="" alt=""
                     style="display:none;width:100%;border-radius:10px;margin-top:0.8rem;border:1px solid rgba(244,196,48,0.15);">
             </div>
@@ -103,6 +99,7 @@ function previewImage(input, id) {
 const seoInput = document.querySelector('[name="seo_description"]');
 const seoCount = document.getElementById('seoCount');
 if (seoInput && seoCount) {
+    seoCount.textContent = seoInput.value.length + ' / 255 karakter';
     seoInput.addEventListener('input', () => {
         seoCount.textContent = seoInput.value.length + ' / 255 karakter';
     });
