@@ -16,7 +16,7 @@ class TestimonialSeeder extends Seeder
             [
                 'name'   => 'Budi Santoso',
                 'title'  => 'Web Developer at Tokopedia',
-                'review' => 'PanduanFlow benar-benar mengubah karir saya. Dari tidak tahu coding sama sekali, sekarang sudah kerja sebagai web developer di perusahaan impian.',
+                'review' => 'KodinginYuk benar-benar mengubah karir saya. Dari tidak tahu coding sama sekali, sekarang sudah kerja sebagai web developer di perusahaan impian.',
                 'rating' => 5,
                 'order'  => 1,
             ],
@@ -37,14 +37,14 @@ class TestimonialSeeder extends Seeder
             [
                 'name'   => 'Rina Kusuma',
                 'title'  => 'UI/UX Designer',
-                'review' => 'Sebagai desainer yang mau belajar coding, PanduanFlow sangat membantu. Penjelasannya tidak bikin pusing dan langsung praktik.',
+                'review' => 'Sebagai desainer yang mau belajar coding, KodinginYuk sangat membantu. Penjelasannya tidak bikin pusing dan langsung praktik.',
                 'rating' => 5,
                 'order'  => 4,
             ],
             [
                 'name'   => 'Dian Permana',
                 'title'  => 'Mobile Developer at Gojek',
-                'review' => 'Kursus Flutter di PanduanFlow terbaik yang pernah saya ikuti. Dari nol sekarang sudah kerja di Gojek sebagai mobile developer.',
+                'review' => 'Kursus Flutter di KodinginYuk terbaik yang pernah saya ikuti. Dari nol sekarang sudah kerja di Gojek sebagai mobile developer.',
                 'rating' => 5,
                 'order'  => 5,
             ],
@@ -56,7 +56,7 @@ class TestimonialSeeder extends Seeder
                 'order'  => 6,
             ],
         ];
- 
+
         foreach ($testimonials as $testimonial) {
             Testimonial::create(array_merge($testimonial, [
                 'image'  => null,

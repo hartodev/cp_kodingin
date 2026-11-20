@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lupa Password — PanduanFlow Admin</title>
+    <title>Lupa Password — KodinginYuk Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -256,7 +256,7 @@
                     <div class="input-wrap">
                         <i class="fas fa-envelope input-icon"></i>
                         <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                            placeholder="admin@panduanflow.com" value="{{ old('email') }}" autofocus>
+                            placeholder="admin@KodinginYuk.com" value="{{ old('email') }}" autofocus>
                     </div>
                     @error('email')
                     <div class="invalid-feedback"><i class="fas fa-exclamation-circle"></i> {{ $message }}</div>

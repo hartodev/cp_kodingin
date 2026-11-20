@@ -1,5 +1,5 @@
 // ============================================================
-//  PanduanFlow — Frontend JS
+//  KodinginYuk — Frontend JS
 //  public/frontend/assets/js/frontend.js
 //  Diambil dari index.html original + extended untuk multi-page
 // ============================================================

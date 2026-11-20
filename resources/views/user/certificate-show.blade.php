@@ -27,7 +27,7 @@
             {{-- Logo --}}
             <div
                 style="font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.3rem;">
-                {{ \App\Models\Setting::get('site_name', 'PanduanFlow') }}
+                {{ \App\Models\Setting::get('site_name', 'KodinginYuk') }}
             </div>
             <div
                 style="font-size:0.72rem;letter-spacing:3px;text-transform:uppercase;color:rgba(244,196,48,0.5);margin-bottom:3rem;">

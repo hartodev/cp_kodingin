@@ -15,25 +15,25 @@ class UserSeeder extends Seeder
     {
            // ── Owner / Admin utama ────────────────────────────────────
         User::create([
-            'name'                => 'Admin PanduanFlow',
-            'email'               => 'admin@panduanflow.com',
+            'name'                => 'Admin KodinginYuk',
+            'email'               => 'admin@KodinginYuk.com',
             'password'            => Hash::make('password'),
             'role'                => 'admin',           // ← tambah ini
             'image'               => '/default-files/avatar.png',
-            'headline'            => 'Founder & Educator at PanduanFlow',
+            'headline'            => 'Founder & Educator at KodinginYuk',
             'bio'                 => 'Seorang developer dan educator yang passionate di bidang teknologi. Sudah 5 tahun mengajar dan membantu ribuan developer berkembang.',
             'gender'              => 'male',
-            'github'              => 'https://github.com/panduanflow',
-            'linkedin'            => 'https://linkedin.com/in/panduanflow',
-            'instagram'           => 'https://instagram.com/panduanflow',
-            'website'             => 'https://panduanflow.com',
+            'github'              => 'https://github.com/KodinginYuk',
+            'linkedin'            => 'https://linkedin.com/in/KodinginYuk',
+            'instagram'           => 'https://instagram.com/KodinginYuk',
+            'website'             => 'https://KodinginYuk.com',
             'is_youtube_verified' => true,
             'email_verified_at'   => now(),
         ]);
- 
+
         // ── User dummy yang sudah verified YouTube ─────────────────
         User::factory(30)->youtubeVerified()->create();
- 
+
         // ── User dummy yang belum verified YouTube ─────────────────
         User::factory(10)->youtubeUnverified()->create();
     }

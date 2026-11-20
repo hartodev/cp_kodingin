@@ -4,7 +4,7 @@
     <div class="logo-section">
         <a href="{{ route('admin.dashboard') }}" class="logo">
             <div class="logo-icon">🚀</div>
-            <span class="logo-text">PanduanFlow</span>
+            <span class="logo-text">KodinginYuk</span>
         </a>
     </div>
 

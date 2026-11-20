@@ -10,7 +10,7 @@
     color: var(--text-muted);
 ">
     <span>
-        &copy; {{ date('Y') }} <strong style="color:var(--gold-pure);">PanduanFlow</strong> — Admin Panel
+        &copy; {{ date('Y') }} <strong style="color:var(--gold-pure);">KodinginYuk</strong> — Admin Panel
     </span>
     <span>
         Logged in as <strong style="color:var(--text-main);">{{ auth()->user()->name }}</strong>

@@ -1,6 +1,6 @@
 {{-- Footer — sama persis dengan desain index.html tapi dinamis dari Setting & SocialLink --}}
 @php
-    $siteName   = \App\Models\Setting::get('site_name', 'PanduanFlow');
+    $siteName   = \App\Models\Setting::get('site_name', 'KodinginYuk');
     $footerDesc = \App\Models\Setting::get('footer_description', 'Future of learning. Designed for the next generation of professionals.');
     $footerCopy = \App\Models\Setting::get('footer_copyright', '© ' . date('Y') . ' ' . $siteName . '. All rights reserved.');
     $ytUrl      = \App\Models\Setting::get('youtube_channel_url');

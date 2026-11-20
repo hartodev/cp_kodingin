@@ -14,13 +14,13 @@ class PortfolioSeeder extends Seeder
     public function run(): void
     {
         $owner = User::first();
- 
+
         $portfolios = [
             [
-                'title'       => 'PanduanFlow - Learning Platform',
+                'title'       => 'KodinginYuk - Learning Platform',
                 'description' => 'Platform belajar online modern dengan fitur kursus video, progress tracking, sertifikat otomatis, dan sistem verifikasi subscribe YouTube. Dibangun dengan Laravel & Vue.js.',
-                'project_url' => 'https://panduanflow.com',
-                'github_url'  => 'https://github.com/panduanflow/platform',
+                'project_url' => 'https://KodinginYuk.com',
+                'github_url'  => 'https://github.com/KodinginYuk/platform',
                 'type'        => 'web',
                 'order'       => 1,
             ],
@@ -28,7 +28,7 @@ class PortfolioSeeder extends Seeder
                 'title'       => 'REST API E-Commerce',
                 'description' => 'REST API lengkap untuk aplikasi e-commerce dengan fitur autentikasi, manajemen produk, cart, order, dan payment gateway integration.',
                 'project_url' => null,
-                'github_url'  => 'https://github.com/panduanflow/ecommerce-api',
+                'github_url'  => 'https://github.com/KodinginYuk/ecommerce-api',
                 'type'        => 'web',
                 'order'       => 2,
             ],
@@ -36,7 +36,7 @@ class PortfolioSeeder extends Seeder
                 'title'       => 'Flutter Task Manager App',
                 'description' => 'Aplikasi manajemen tugas berbasis Flutter yang berjalan di iOS dan Android. Dilengkapi fitur reminder, kategori, dan sinkronisasi cloud.',
                 'project_url' => null,
-                'github_url'  => 'https://github.com/panduanflow/flutter-tasks',
+                'github_url'  => 'https://github.com/KodinginYuk/flutter-tasks',
                 'type'        => 'mobile',
                 'order'       => 3,
             ],
@@ -52,12 +52,12 @@ class PortfolioSeeder extends Seeder
                 'title'       => 'Real-time Chat Application',
                 'description' => 'Aplikasi chat real-time menggunakan Laravel Broadcasting, Pusher, dan Vue.js. Mendukung private chat, group chat, dan notifikasi push.',
                 'project_url' => null,
-                'github_url'  => 'https://github.com/panduanflow/chat-app',
+                'github_url'  => 'https://github.com/KodinginYuk/chat-app',
                 'type'        => 'web',
                 'order'       => 5,
             ],
         ];
- 
+
         foreach ($portfolios as $portfolio) {
             Portfolio::create(array_merge($portfolio, [
                 'user_id'   => $owner->id,

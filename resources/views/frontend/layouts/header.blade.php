@@ -4,7 +4,7 @@
 
         {{-- Logo --}}
         <a href="{{ url('/') }}" class="nav-logo">
-            {{ \App\Models\Setting::get('site_name', 'PanduanFlow') }}
+            {{ \App\Models\Setting::get('site_name', 'KodinginYuk') }}
         </a>
 
         {{-- Menu --}}

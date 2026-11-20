@@ -11,7 +11,7 @@
     {{-- Logo --}}
     <div class="sidebar-logo">
         <div>
-            <a href="{{ url('/') }}">{{ \App\Models\Setting::get('site_name', 'PanduanFlow') }}</a>
+            <a href="{{ url('/') }}">{{ \App\Models\Setting::get('site_name', 'KodinginYuk') }}</a>
             <span>Student Dashboard</span>
         </div>
     </div>

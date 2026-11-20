@@ -1,5 +1,5 @@
 // ============================================================
-//  PanduanFlow — Admin Panel JS
+//  KodinginYuk — Admin Panel JS
 //  public/backend/assets/js/admin.js
 // ============================================================
 

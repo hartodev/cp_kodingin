@@ -17,7 +17,7 @@
             <div class="form-group">
                 <label class="form-label">Nama Website <span style="color:#EF4444;">*</span></label>
                 <input type="text" name="site_name" class="form-control @error('site_name') is-invalid @enderror"
-                    value="{{ old('site_name', $settings['site_name'] ?? '') }}" placeholder="PanduanFlow">
+                    value="{{ old('site_name', $settings['site_name'] ?? '') }}" placeholder="KodinginYuk">
                 @error('site_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
@@ -37,7 +37,7 @@
             <div class="form-group">
                 <label class="form-label">Email <span style="color:#EF4444;">*</span></label>
                 <input type="email" name="site_email" class="form-control @error('site_email') is-invalid @enderror"
-                    value="{{ old('site_email', $settings['site_email'] ?? '') }}" placeholder="hello@panduanflow.com">
+                    value="{{ old('site_email', $settings['site_email'] ?? '') }}" placeholder="hello@KodinginYuk.com">
                 @error('site_email') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
@@ -64,14 +64,14 @@
                     <label class="form-label">Nama Channel</label>
                     <input type="text" name="youtube_channel_name" class="form-control"
                         value="{{ old('youtube_channel_name', $settings['youtube_channel_name'] ?? '') }}"
-                        placeholder="PanduanFlow">
+                        placeholder="KodinginYuk">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">URL Channel</label>
                     <input type="url" name="youtube_channel_url" class="form-control"
                         value="{{ old('youtube_channel_url', $settings['youtube_channel_url'] ?? '') }}"
-                        placeholder="https://youtube.com/@panduanflow">
+                        placeholder="https://youtube.com/@KodinginYuk">
                 </div>
 
                 <div class="form-group" style="margin-bottom:0;">
@@ -125,7 +125,7 @@
                 <label class="form-label">Meta Title</label>
                 <input type="text" name="meta_title" class="form-control"
                     value="{{ old('meta_title', $settings['meta_title'] ?? '') }}"
-                    placeholder="PanduanFlow - Next Gen Learning Platform" maxlength="255">
+                    placeholder="KodinginYuk - Next Gen Learning Platform" maxlength="255">
             </div>
 
             <div class="form-group">
@@ -157,7 +157,7 @@
                 <label class="form-label">Copyright</label>
                 <input type="text" name="footer_copyright" class="form-control"
                     value="{{ old('footer_copyright', $settings['footer_copyright'] ?? '') }}"
-                    placeholder="© 2025 PanduanFlow. All rights reserved.">
+                    placeholder="© 2025 KodinginYuk. All rights reserved.">
             </div>
 
             <div class="form-group" style="margin-bottom:0;">
